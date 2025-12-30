@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>The Outfit - Login</title>
+<style>
+body{margin:0;background:#050507;color:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",system-ui,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+.card{background:#0b0c10;border-radius:24px;border:1px solid rgba(255,255,255,.08);box-shadow:0 30px 80px rgba(0,0,0,.9);padding:32px 28px 26px;width:320px;}
+.title{font-size:22px;letter-spacing:.3em;text-transform:uppercase;margin-bottom:18px;text-align:center;}
+label{font-size:12px;color:#a1a1aa;display:block;margin-bottom:4px;}
+input{width:100%;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:#050507;color:#f5f5f4;outline:none;font-size:13px;margin-bottom:14px;}
+button{width:100%;padding:9px 10px;border-radius:999px;border:1px solid #e6c27a;background:#e6c27a;color:#050507;font-size:12px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;}
+.sub{margin-top:12px;font-size:11px;color:#a1a1aa;text-align:center;}
+a{color:#e6c27a;text-decoration:none;}
+.flash{color:#f97373;font-size:11px;margin-bottom:8px;text-align:center;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="title">THE OUTFIT</div>
+
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <div class="flash">{% for m in messages %}{{ m }}<br>{% endfor %}</div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+
+    <label>ユーザー名</label>
+    <input type="text" name="name" autocomplete="username">
+
+    <label>パスワード</label>
+    <input type="password" name="password" autocomplete="current-password">
+
+    <button type="submit">LOG IN</button>
+  </form>
+
+  <div class="sub">初めての方は <a href="{{ url_for('register') }}">新規登録</a></div>
+</div>
+</body>
+</html>
