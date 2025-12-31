@@ -174,46 +174,37 @@ body{
 }
 
 /* ============================
-   VOTE: “点滅”をはっきりさせる（カク消え→カク出る）
+   VOTE: 色は強く、点滅はJSで確実に
    ============================ */
 .post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.10) contrast(1.03) brightness(1.03);
+  filter:saturate(1.12) contrast(1.05) brightness(1.04);
 }
 
 .sparkStar{
   position:absolute;
   width:var(--s, 10px);
   height:var(--s, 10px);
-  opacity:0;
-  transform:scale(.70) rotate(var(--r, 0deg));
+  opacity:0;                 /* ★通常は消す */
+  transform:scale(.8) rotate(var(--r,0deg));
   transform-origin:center;
   will-change:opacity, transform, filter;
-  mix-blend-mode:screen;
+  mix-blend-mode:normal;     /* ★見え方を安定させる */
 
+  /* ★色をだいぶ強く（白芯＋金の光） */
   filter:
-    drop-shadow(0 0 2px rgba(255,255,255,.98))
-    drop-shadow(0 0 6px rgba(255,255,255,.65))
-    drop-shadow(0 0 12px rgba(230,194,122,.82))
-    drop-shadow(0 0 22px rgba(230,194,122,.48));
-
-  /* ★ここが肝：stepで“点滅”っぽくする */
-  animation: sparkleBlink var(--dur, 720ms) steps(1,end) var(--iter, 10);
-  animation-delay: var(--delay, 0ms);
-  animation-fill-mode: both;
+    drop-shadow(0 0 2px rgba(255,255,255,1))
+    drop-shadow(0 0 7px rgba(255,255,255,.85))
+    drop-shadow(0 0 14px rgba(255,255,255,.45))
+    drop-shadow(0 0 12px rgba(230,194,122,1))
+    drop-shadow(0 0 26px rgba(230,194,122,.70))
+    drop-shadow(0 0 44px rgba(230,194,122,.45));
 }
 .sparkStar svg{width:100%;height:100%;display:block;}
 
-/* 0/1が切り替わる感じで明滅させる */
-@keyframes sparkleBlink{
-  0%   {opacity:0;   transform:scale(.70) rotate(var(--r,0deg));}
-  12%  {opacity:1;   transform:scale(1.55) rotate(var(--r,0deg));}
-  18%  {opacity:0;   transform:scale(.85) rotate(var(--r,0deg));}
-  34%  {opacity:1;   transform:scale(1.65) rotate(var(--r,0deg));}
-  40%  {opacity:0;   transform:scale(.88) rotate(var(--r,0deg));}
-  58%  {opacity:1;   transform:scale(1.50) rotate(var(--r,0deg));}
-  66%  {opacity:0;   transform:scale(.86) rotate(var(--r,0deg));}
-  84%  {opacity:1;   transform:scale(1.40) rotate(var(--r,0deg));}
-  100% {opacity:0;   transform:scale(.80) rotate(var(--r,0deg));}
+/* ★点滅ON状態（JSで付け外し） */
+.sparkStar.on{
+  opacity:1;
+  transform:scale(var(--k, 1.9)) rotate(var(--r,0deg));
 }
 
 /* ribbons/stamps */
@@ -372,7 +363,8 @@ form.inline{display:inline;margin:0;}
 @media (prefers-reduced-motion: reduce){
   .post-inner{transition:none !important;}
   .post-inner:hover{transform:none !important;}
-  .sparkStar{animation:none !important; opacity:.45 !important; transform:scale(1) !important;}
+  /* reduce motionでも「点は見える」 */
+  .sparkStar{opacity:.45 !important;}
   .post-inner.unvote-purple .post-img-wrap::after{animation:none !important; opacity:1 !important;}
   .post-inner.unvote-purple .post-img-wrap img{animation:none !important; filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64) !important;}
 }
@@ -548,23 +540,23 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
   function rnd(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
+  function choice(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
-  function makeSparkStar(sizePx, durMs, delayMs, iter, rotDeg, warm){
+  // ★星（小さく、強い色）
+  function makeSparkStar(sizePx, rotDeg, warm){
     const d = document.createElement("div");
     d.className = "sparkStar";
     d.style.setProperty("--s", sizePx + "px");
-    d.style.setProperty("--dur", durMs + "ms");
-    d.style.setProperty("--delay", delayMs + "ms");
-    d.style.setProperty("--iter", String(iter));
     d.style.setProperty("--r", rotDeg + "deg");
 
+    // 白多め＋金も混ぜる（色は強く）
     const fill = warm ? "#E6C27A" : "#FFFFFF";
-    const fillOpacity = warm ? "0.80" : "0.88";
+    const fillOpacity = warm ? "0.98" : "0.98";
 
     d.innerHTML = `
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <polygon
-          points="50,8 60,40 92,50 60,60 50,92 40,60 8,50 40,40"
+          points="50,10 60,40 90,50 60,60 50,90 40,60 10,50 40,40"
           fill="${fill}"
           opacity="${fillOpacity}"
         />
@@ -573,33 +565,70 @@ document.addEventListener("DOMContentLoaded", function () {
     return d;
   }
 
+  // ★確実に点滅：JSでON/OFF（キラキラ）
+  function startBlinking(layer, stars, durationMs){
+    const endAt = performance.now() + durationMs;
+
+    // 点滅テンポ（小さいほどチカチカ）
+    const tickMs = 85;
+
+    const timer = setInterval(() => {
+      const now = performance.now();
+      if (now >= endAt){
+        clearInterval(timer);
+        stars.forEach(s => s.classList.remove("on"));
+        return;
+      }
+
+      // 毎tick: まず全消灯（確実に点滅が見える）
+      stars.forEach(s => s.classList.remove("on"));
+
+      // その後ランダムで点灯（密度）
+      // “点滅してる”と感じるために、毎回違う場所が光る
+      const onCount = Math.max(10, Math.floor(stars.length * 0.28)); // だいぶ分かる
+      for (let i=0;i<onCount;i++){
+        const s = stars[rnd(0, stars.length - 1)];
+        // キラッとする倍率（だいぶ強い）
+        const k = choice([1.6, 1.8, 2.0, 2.2, 2.4]);
+        s.style.setProperty("--k", String(k));
+        s.classList.add("on");
+      }
+    }, tickMs);
+
+    // 念のため後始末
+    setTimeout(() => { clearInterval(timer); }, durationMs + 200);
+  }
+
   function spawnStars(card){
     const layer = card.querySelector(".star-layer");
     if (!layer) return;
     layer.innerHTML = "";
 
-    // ★点滅感を出す：回数を増やし、周期を速くする
-    const starCount = 52;
-    const pad = 6;
+    // ★小さく、でも目立つ：数は多め
+    const starCount = 90;
+    const pad = 4;
+    const stars = [];
 
     for (let i=0;i<starCount;i++){
-      const s = rnd(6, 14);
-      const dur = rnd(520, 820);   // ★速い
-      const delay = rnd(0, 700);   // ★ズラす
-      const iter = rnd(10, 16);    // ★何度も点滅
+      const s = rnd(6, 12);                 // ★だいぶ小さく
       const x = rnd(pad, 100 - pad);
       const y = rnd(pad, 100 - pad);
-      const rot = rnd(-20, 20);
-      const warm = Math.random() < 0.42;
+      const rot = rnd(-25, 25);
+      const warm = Math.random() < 0.45;
 
-      const el = makeSparkStar(s, dur, delay, iter, rot, warm);
+      const el = makeSparkStar(s, rot, warm);
       el.style.left = `calc(${x}% - ${s/2}px)`;
       el.style.top  = `calc(${y}% - ${s/2}px)`;
       layer.appendChild(el);
+      stars.push(el);
     }
 
-    // 最長: delay 700 + dur 820*16 ≒ 13820ms
-    setTimeout(() => { layer.innerHTML = ""; }, 14500);
+    // ★点滅時間
+    const blinkDuration = 8200;
+    startBlinking(layer, stars, blinkDuration);
+
+    // 後片付け
+    setTimeout(() => { layer.innerHTML = ""; }, blinkDuration + 300);
   }
 
   // Vote (AJAX)
@@ -664,10 +693,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 14500);
-          spawnStars(card);
+          addOnce(card, "vote-stars", 8500);
+          spawnStars(card);               // ★強い色＆確実点滅
           addRibbon(card);
-          showToast("VOTED ✦", "Blinking sparkle.");
+          showToast("VOTED ✦", "STRONG sparkle blink.");
         } else {
           addOnce(card, "unvote-purple", 1600);
           addStamp(card);
