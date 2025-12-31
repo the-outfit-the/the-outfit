@@ -63,13 +63,17 @@ body{
   height:100%;
   display:flex;flex-direction:column;
   transform:translateZ(0);
-  transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease), filter .35s var(--ease);
+  transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
 }
+
+/* hover */
 .post-inner:hover{
   transform:translateY(-4px);
   border-color:rgba(230,194,122,.22);
   box-shadow: 0 40px 120px rgba(0,0,0,.92), 0 0 0 1px rgba(230,194,122,.08);
 }
+
+/* subtle sweep */
 .post-inner::before{
   content:"";
   position:absolute;inset:-1px;
@@ -80,28 +84,40 @@ body{
   opacity:0;
   transition:opacity .3s var(--ease);
 }
-.post-inner:hover::before{opacity:1;animation:sweep 1.2s var(--ease) 1;}
-@keyframes sweep{0%{transform:translateX(-60%);}100%{transform:translateX(60%);}}
+.post-inner:hover::before{
+  opacity:1;
+  animation:sweep 1.2s var(--ease) 1;
+}
+@keyframes sweep{
+  0%{transform:translateX(-60%);}
+  100%{transform:translateX(60%);}
+}
 
-/* Image wrap */
+/* image wrap */
 .post-img-wrap{
   position:relative;
   border-radius:18px;overflow:hidden;margin-bottom:10px;
-  aspect-ratio: 4 / 5;
+  aspect-ratio:4/5;
   background:#050507;
   transform:translateZ(0);
 }
 
-/* 写真の上に演出レイヤー */
-.post-img-wrap::before,
+/* overlay (unvote purple) */
 .post-img-wrap::after{
   content:"";
-  position:absolute;inset:-25%;
+  position:absolute;inset:0;
   pointer-events:none;
   opacity:0;
 }
 
-/* 画像本体 */
+/* star layer container */
+.star-layer{
+  position:absolute; inset:0;
+  pointer-events:none;
+  overflow:hidden;
+}
+
+/* image itself */
 .post-img-wrap img{
   width:100%;height:100%;
   object-fit:cover;
@@ -116,12 +132,20 @@ body{
   filter:saturate(1.05) contrast(1.02);
 }
 
+/* meta */
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
 .post-user{font-weight:500;letter-spacing:.04em;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
-.count-pop{animation:countPop .34s var(--ease) 1;}
-@keyframes countPop{0%{transform:translateY(2px);opacity:.65;}60%{transform:translateY(-3px);opacity:1;}100%{transform:translateY(0);opacity:1;}}
 
+/* count pop */
+.count-pop{animation:countPop .34s var(--ease) 1;}
+@keyframes countPop{
+  0%{transform:translateY(2px);opacity:.65;}
+  60%{transform:translateY(-3px);opacity:1;}
+  100%{transform:translateY(0);opacity:1;}
+}
+
+/* actions */
 .actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;
@@ -129,7 +153,7 @@ body{
   font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
   border:1px solid var(--accent);
   cursor:pointer;
-  transition:transform .18s var(--ease), filter .2s var(--ease), background .25s var(--ease), color .25s var(--ease), opacity .25s var(--ease);
+  transition:transform .18s var(--ease), background .25s var(--ease), color .25s var(--ease), opacity .25s var(--ease);
   position:relative;
   user-select:none;
 }
@@ -137,6 +161,7 @@ body{
 .btn-vote{background:transparent;color:var(--accent);text-decoration:none;}
 .btn-unvote{background:var(--accent);color:#050507;text-decoration:none;}
 .btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+
 .btn::after{
   content:"";
   position:absolute;inset:0;border-radius:999px;
@@ -147,77 +172,70 @@ body{
 }
 .btn:hover::after{opacity:.9;animation:btnSweep 1.05s var(--ease) 1;}
 @keyframes btnSweep{0%{transform:translateX(-80%);}100%{transform:translateX(80%);}}
+
 .btn-loading{opacity:.65;cursor:progress;pointer-events:none;}
 
-/* Card flash */
+/* card flash */
 .vote-flash{animation:voteFlash .55s var(--ease) 1;}
 @keyframes voteFlash{
-  0%{transform:translateY(0);box-shadow:var(--shadow);border-color:rgba(230,194,122,.12);}
-  45%{transform:translateY(-6px);box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.16), 0 0 46px rgba(230,194,122,.12);border-color:rgba(230,194,122,.40);}
-  100%{transform:translateY(0);box-shadow:var(--shadow);border-color:var(--border);}
+  0%{box-shadow:var(--shadow);border-color:rgba(230,194,122,.12);}
+  45%{box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.16), 0 0 52px rgba(230,194,122,.14);border-color:rgba(230,194,122,.44);}
+  100%{box-shadow:var(--shadow);border-color:var(--border);}
 }
 
 /* ============================
-   VOTE: 大きい星が写真全体にきらめく
+   VOTE: Big star twinkles (no mesh)
    ============================ */
-/* ベース：ゴールドのふわっと光 */
-.post-inner.vote-stars .post-img-wrap::before{
-  opacity:1;
-  mix-blend-mode:screen;
-  background:
-    radial-gradient(circle at 50% 45%, rgba(230,194,122,.55), transparent 62%),
-    radial-gradient(circle at 18% 20%, rgba(255,255,255,.20), transparent 55%),
-    radial-gradient(circle at 85% 25%, rgba(255,255,255,.16), transparent 60%);
-  animation:baseGlow 900ms var(--ease) 1;
-}
-@keyframes baseGlow{
-  0%{opacity:0; transform:translateY(12px) scale(.99);}
-  22%{opacity:1;}
-  100%{opacity:0; transform:translateY(-10px) scale(1.02);}
-}
 
-/* 星たち：大きめの“きらめき”を複数箇所に */
-.post-inner.vote-stars .post-img-wrap::after{
-  opacity:1;
-  mix-blend-mode:screen;
-  background:
-    radial-gradient(circle, rgba(255,255,255,.95) 0 2px, transparent 3px) 18% 22% / 220px 220px,
-    radial-gradient(circle, rgba(230,194,122,.95) 0 2px, transparent 3px) 78% 18% / 260px 260px,
-    radial-gradient(circle, rgba(255,255,255,.85) 0 2px, transparent 3px) 30% 70% / 280px 280px,
-    radial-gradient(circle, rgba(230,194,122,.85) 0 2px, transparent 3px) 82% 72% / 240px 240px,
-    radial-gradient(circle, rgba(255,255,255,.70) 0 2px, transparent 3px) 55% 45% / 320px 320px,
-    /* ここから “星っぽい十字” を作る（縦横の光） */
-    linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%) 18% 22% / 120px 2px,
-    linear-gradient(0deg,  transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%) 18% 22% / 2px 120px,
-
-    linear-gradient(90deg, transparent 0%, rgba(230,194,122,.55) 50%, transparent 100%) 78% 18% / 140px 2px,
-    linear-gradient(0deg,  transparent 0%, rgba(230,194,122,.55) 50%, transparent 100%) 78% 18% / 2px 140px,
-
-    linear-gradient(90deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%) 30% 70% / 150px 2px,
-    linear-gradient(0deg,  transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%) 30% 70% / 2px 150px,
-
-    linear-gradient(90deg, transparent 0%, rgba(230,194,122,.45) 50%, transparent 100%) 82% 72% / 130px 2px,
-    linear-gradient(0deg,  transparent 0%, rgba(230,194,122,.45) 50%, transparent 100%) 82% 72% / 2px 130px,
-
-    linear-gradient(90deg, transparent 0%, rgba(255,255,255,.35) 50%, transparent 100%) 55% 45% / 170px 2px,
-    linear-gradient(0deg,  transparent 0%, rgba(255,255,255,.35) 50%, transparent 100%) 55% 45% / 2px 170px;
-  background-repeat:no-repeat;
-  filter:blur(.15px);
-  animation:starsTwinkle 1050ms var(--ease) 1;
-}
-
-@keyframes starsTwinkle{
-  0%{opacity:0; transform:translateY(12px) scale(.98);}
-  18%{opacity:1;}
-  55%{opacity:1; transform:translateY(-6px) scale(1.01);}
-  100%{opacity:0; transform:translateY(-14px) scale(1.02);}
-}
-
+/* a little global brighten while stars play (no bounce) */
 .post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.20) contrast(1.06) brightness(1.10);
+  filter:saturate(1.18) contrast(1.06) brightness(1.09);
 }
 
-/* VOTEDリボン */
+/* star element (real star shape) */
+.star{
+  position:absolute;
+  width:120px; height:120px;
+  clip-path: polygon(
+    50% 0%,
+    62% 34%,
+    98% 38%,
+    70% 58%,
+    80% 92%,
+    50% 72%,
+    20% 92%,
+    30% 58%,
+    2% 38%,
+    38% 34%
+  );
+  background:
+    radial-gradient(circle at 30% 30%,
+      rgba(255,255,255,.98) 0%,
+      rgba(230,194,122,.95) 35%,
+      rgba(230,194,122,.20) 62%,
+      rgba(230,194,122,0) 78%
+    );
+  filter:
+    drop-shadow(0 0 14px rgba(230,194,122,.40))
+    drop-shadow(0 0 28px rgba(255,255,255,.14));
+  opacity:0;
+  transform:scale(.88) rotate(0deg);
+  will-change:opacity, transform, filter;
+  animation:starTwinkle var(--dur, 980ms) ease-in-out 1;
+}
+
+/* make it “appear/disappear” multiple times */
+@keyframes starTwinkle{
+  0%   {opacity:0; transform:scale(.82) rotate(-6deg); filter:drop-shadow(0 0 10px rgba(230,194,122,.30)) drop-shadow(0 0 18px rgba(255,255,255,.10));}
+  12%  {opacity:1; transform:scale(1.02) rotate(0deg); }
+  26%  {opacity:.15; transform:scale(.92) rotate(4deg);}
+  40%  {opacity:1; transform:scale(1.06) rotate(0deg);}
+  56%  {opacity:.12; transform:scale(.90) rotate(-3deg);}
+  72%  {opacity:1; transform:scale(1.03) rotate(0deg);}
+  100% {opacity:0; transform:scale(.84) rotate(6deg);}
+}
+
+/* VOTED ribbon (kept) */
 .ribbon{
   position:absolute;
   left:14px; top:14px;
@@ -250,40 +268,34 @@ body{
 }
 
 /* ============================
-   UNVOTE: 暗い紫に沈む（わかりやすく）
+   UNVOTE: slow purple sink (no bounce / no color rebound)
    ============================ */
-.post-inner.unvote-purple{
-  animation:purpleDrop 850ms var(--ease) 1;
-}
-@keyframes purpleDrop{
-  0%{transform:translateY(0);}
-  30%{transform:translateY(12px);}
-  100%{transform:translateY(0);}
-}
-
-/* 紫の“沈み”フィルタ */
-.post-inner.unvote-purple .post-img-wrap img{
-  filter:grayscale(.25) saturate(.55) contrast(.98) brightness(.72);
-}
-
-/* 紫のベール＋暗転ビネット */
 .post-inner.unvote-purple .post-img-wrap::after{
-  opacity:1;
   background:
-    radial-gradient(closest-side at 50% 50%, rgba(98,54,140,.20), rgba(38,18,58,.66)),
-    radial-gradient(closest-side at 50% 50%, transparent 42%, rgba(0,0,0,.68) 100%),
-    linear-gradient(180deg, rgba(58,26,92,.10), rgba(0,0,0,.55));
+    radial-gradient(closest-side at 50% 50%, rgba(140,90,200,.18), rgba(35,12,60,.72)),
+    radial-gradient(closest-side at 50% 50%, transparent 42%, rgba(0,0,0,.62) 100%),
+    linear-gradient(180deg, rgba(70,30,110,.10), rgba(0,0,0,.55));
   mix-blend-mode:multiply;
-  animation:purpleSink 1100ms var(--ease) 1;
-}
-@keyframes purpleSink{
-  0%{opacity:0; transform:scale(1.03) translateY(-10px);}
-  25%{opacity:1;}
-  75%{opacity:1;}
-  100%{opacity:0; transform:scale(1.0) translateY(12px);}
+  animation:purpleFade 1400ms ease-in-out 1;
 }
 
-/* UNVOTEDスタンプ */
+.post-inner.unvote-purple .post-img-wrap img{
+  animation:purpleImg 1400ms ease-in-out 1;
+}
+
+@keyframes purpleFade{
+  0%   {opacity:0;}
+  55%  {opacity:1;}   /* じわっと沈む */
+  100% {opacity:0;}   /* じわっと戻る */
+}
+
+@keyframes purpleImg{
+  0%   {filter:none;}
+  55%  {filter:grayscale(.22) saturate(.55) contrast(.98) brightness(.72);}
+  100% {filter:none;}
+}
+
+/* UNVOTED stamp */
 .stamp{
   position:absolute;
   right:14px; top:14px;
@@ -300,7 +312,7 @@ body{
   transform:rotate(-10deg) translateY(12px) scale(.98);
   opacity:0;
   pointer-events:none;
-  animation:stampIn 1300ms var(--ease) 1;
+  animation:stampIn 1300ms ease-in-out 1;
 }
 @keyframes stampIn{
   0%{opacity:0; transform:rotate(-10deg) translateY(18px) scale(.98);}
@@ -309,12 +321,12 @@ body{
   100%{opacity:0; transform:rotate(-10deg) translateY(-10px) scale(1.01);}
 }
 
-/* Note, empty */
+/* misc */
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
 @media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
 
-/* Lookbook */
+/* lookbook */
 .lookbook-overlay{
   position:fixed;inset:0;padding:24px;
   background:rgba(5,5,7,.92);
@@ -361,7 +373,7 @@ body{
   .lookbook-image-wrap img{max-height:calc(100vh - 140px);}
 }
 
-/* Toast */
+/* toast */
 .toast{
   position:fixed;
   right:18px;
@@ -435,6 +447,7 @@ form.inline{display:inline;margin:0;}
     <div class="post" data-post-id="{{ p['id'] }}">
       <div class="post-inner" id="card-{{ p['id'] }}">
         <div class="post-img-wrap">
+          <div class="star-layer" aria-hidden="true"></div>
           <img
             src="{{ url_for('uploaded_file', filename=p['filename']) }}"
             class="look-img"
@@ -563,6 +576,41 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
 
+  // BIG STARS: create real star elements (no mesh)
+  function spawnStars(card, count){
+    const layer = card.querySelector(".star-layer");
+    if (!layer) return;
+
+    // clear old stars just in case
+    layer.innerHTML = "";
+
+    const presets = [
+      { x: 14, y: 18, size: 150, dur: 1050 },
+      { x: 76, y: 16, size: 130, dur: 980 },
+      { x: 30, y: 70, size: 170, dur: 1120 },
+      { x: 82, y: 72, size: 140, dur: 1000 },
+      { x: 55, y: 44, size: 190, dur: 1180 }
+    ];
+
+    for (let i = 0; i < count; i++){
+      const p = presets[i % presets.length];
+      const star = document.createElement("div");
+      star.className = "star";
+      // position in % of container
+      star.style.left = `calc(${p.x}% - ${p.size/2}px)`;
+      star.style.top  = `calc(${p.y}% - ${p.size/2}px)`;
+      star.style.width = `${p.size}px`;
+      star.style.height = `${p.size}px`;
+      star.style.setProperty("--dur", `${p.dur}ms`);
+      // small stagger so they "appear/disappear" not all same timing
+      star.style.animationDelay = `${i * 80}ms`;
+      layer.appendChild(star);
+    }
+
+    // remove after animations end
+    setTimeout(() => { layer.innerHTML = ""; }, 1400);
+  }
+
   // Vote (AJAX)
   const voteForms = document.querySelectorAll(".vote-form");
 
@@ -627,13 +675,14 @@ document.addEventListener("DOMContentLoaded", function () {
         // Effects
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 1200);     // ★大きい星
+          addOnce(card, "vote-stars", 1400);
+          spawnStars(card, 5);       // ★大きい星：消えたり出たり（複数）
           addRibbon(card);
-          showToast("VOTED ✦", "Stars on your look.");
+          showToast("VOTED ✦", "Big twinkles.");
         } else {
-          addOnce(card, "unvote-purple", 1300);  // ★暗い紫に沈む
+          addOnce(card, "unvote-purple", 1400);  // ★じわっと紫に沈む→じわっと戻る
           addStamp(card);
-          showToast("UNVOTED", "Faded into purple.");
+          showToast("UNVOTED", "Sank into purple.");
         }
 
       } catch (_) {
