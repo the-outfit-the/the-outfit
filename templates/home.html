@@ -95,11 +95,24 @@ body{
 
 /* 枠固定 */
 .post-img-wrap{
+  position:relative;
   border-radius:18px;overflow:hidden;margin-bottom:10px;
   aspect-ratio: 4 / 5;
   background:#050507;
   transform:translateZ(0);
 }
+
+/* ★写真の上に演出用レイヤー：通常は透明 */
+.post-img-wrap::before,
+.post-img-wrap::after{
+  content:"";
+  position:absolute;inset:-20%;
+  pointer-events:none;
+  opacity:0;
+  transition:opacity .2s var(--ease);
+}
+
+/* 画像本体 */
 .post-img-wrap img{
   width:100%;height:100%;
   object-fit:cover;
@@ -107,7 +120,7 @@ body{
   cursor:pointer;
   transform:scale(1);
   transition:transform .6s var(--ease), filter .6s var(--ease);
-  will-change:transform;
+  will-change:transform, filter;
 }
 .post-inner:hover .post-img-wrap img{
   transform:scale(1.03);
@@ -170,41 +183,83 @@ body{
   100%{transform:translateY(0);box-shadow:var(--shadow);border-color:var(--border);}
 }
 
-/* ★投票キラキラ（写真の上） */
-.post-inner.vote-sparkle .post-img-wrap::after{
-  content:"";
-  position:absolute;
-  inset:-20%;
-  pointer-events:none;
-  background:
-    radial-gradient(circle, rgba(255,255,255,.95) 0 1px, transparent 2px) 10% 30% / 180px 140px,
-    radial-gradient(circle, rgba(230,194,122,.95) 0 1px, transparent 2px) 60% 20% / 210px 160px,
-    radial-gradient(circle, rgba(255,255,255,.85) 0 1px, transparent 2px) 30% 70% / 220px 170px,
-    radial-gradient(circle, rgba(230,194,122,.75) 0 1px, transparent 2px) 80% 65% / 240px 190px;
+/* ============================
+   ★VOTE：写真全体がふわっと光る
+   ============================ */
+.post-inner.vote-glow .post-img-wrap::before{
+  opacity:1;
   mix-blend-mode:screen;
+  background:
+    radial-gradient(closest-side at 50% 40%, rgba(230,194,122,.35), transparent 70%),
+    linear-gradient(120deg, transparent 0%, rgba(255,255,255,.16) 18%, transparent 40%);
   filter:blur(.2px);
-  opacity:0;
-  transform:translateY(8px) scale(.98);
-  animation:sparkle 900ms var(--ease) 1;
+  animation:voteGlow 820ms var(--ease) 1;
 }
-.post-img-wrap{position:relative;}
-@keyframes sparkle{
-  0%{opacity:0;transform:translateY(10px) scale(.98);}
-  30%{opacity:1;}
-  100%{opacity:0;transform:translateY(-10px) scale(1.02);}
+.post-inner.vote-glow .post-img-wrap img{
+  filter:saturate(1.12) contrast(1.04) brightness(1.07);
+}
+@keyframes voteGlow{
+  0%{transform:translateY(12px) scale(.98); opacity:0;}
+  28%{opacity:1;}
+  100%{transform:translateY(-10px) scale(1.02); opacity:0;}
 }
 
-/* ★取り消し：少し悲しげ（彩度落ち＆ふわっと沈む） */
-.post-inner.unvote-sigh{
-  animation:sigh 520ms var(--ease) 1;
+/* ============================
+   ★UNVOTE：わかりやすく寂しい演出
+   暗転 + 彩度落ち + 沈む + “VOID”スタンプ
+   ============================ */
+.post-inner.unvote-sad{
+  animation:unvoteDrop 620ms var(--ease) 1;
 }
-.post-inner.unvote-sigh .post-img-wrap img{
-  filter:saturate(.88) contrast(.98) brightness(.96);
-}
-@keyframes sigh{
+@keyframes unvoteDrop{
   0%{transform:translateY(0);}
-  45%{transform:translateY(4px); filter:brightness(.98);}
+  35%{transform:translateY(8px);}
   100%{transform:translateY(0);}
+}
+
+/* 画像自体を“寂しく” */
+.post-inner.unvote-sad .post-img-wrap img{
+  filter:grayscale(.25) saturate(.55) contrast(.98) brightness(.84);
+  transform:scale(.995);
+}
+
+/* 暗いビネット＋うっすら粒感（上品に） */
+.post-inner.unvote-sad .post-img-wrap::after{
+  opacity:1;
+  background:
+    radial-gradient(closest-side at 50% 50%, transparent 40%, rgba(0,0,0,.55) 100%),
+    linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.40));
+  animation:unvoteVignette 760ms var(--ease) 1;
+}
+@keyframes unvoteVignette{
+  0%{transform:scale(1.04); opacity:0;}
+  30%{opacity:1;}
+  100%{transform:scale(1); opacity:0;}
+}
+
+/* “VOID”スタンプ（短時間） */
+.unvote-stamp{
+  position:absolute;
+  top:16px; right:16px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(5,5,7,.45);
+  color:rgba(245,245,244,.82);
+  font-size:10px;
+  letter-spacing:.22em;
+  text-transform:uppercase;
+  backdrop-filter:blur(10px);
+  transform:rotate(-7deg) translateY(6px);
+  opacity:0;
+  pointer-events:none;
+  animation:stamp 980ms var(--ease) 1;
+}
+@keyframes stamp{
+  0%{opacity:0; transform:rotate(-7deg) translateY(10px) scale(.98);}
+  18%{opacity:1;}
+  70%{opacity:1;}
+  100%{opacity:0; transform:rotate(-7deg) translateY(0) scale(1);}
 }
 
 /* ゲスト案内 */
@@ -233,9 +288,9 @@ body{
 }
 .lookbook-overlay.show .lookbook-inner{transform:scale(1);}
 .lookbook-image-wrap{
-  width:min(92vw, 1100px);                 /* ★小さな画像でもここまで大きく表示 */
+  width:min(92vw, 1100px);
   height:auto;
-  max-height:calc(100vh - 160px);          /* 高さは画面内に収める */
+  max-height:calc(100vh - 160px);
   display:flex;justify-content:center;align-items:center;
   overflow:hidden;
   border-radius:20px;
@@ -245,10 +300,10 @@ body{
 }
 .lookbook-image-wrap img{
   display:block;
-  width:100%;                              /* ★ここが重要：常に枠いっぱいへ */
+  width:100%;
   height:auto;
   max-height:calc(100vh - 160px);
-  object-fit:contain;                      /* 全体表示を守る */
+  object-fit:contain;
   image-rendering:auto;
 }
 .lookbook-credit{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.12em;text-align:center;}
@@ -431,10 +486,10 @@ document.addEventListener("DOMContentLoaded", function () {
     toastSub.textContent = sub;
     toast.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 1600);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1650);
   }
 
-  // ---------- Anim helpers ----------
+  // ---------- Helpers ----------
   function popCount(el){
     if (!el) return;
     el.classList.remove("count-pop");
@@ -450,22 +505,30 @@ document.addEventListener("DOMContentLoaded", function () {
     card.classList.add("vote-flash");
   }
 
-  function sparkleCard(postId){
+  function voteGlow(postId){
     const card = document.getElementById(`card-${postId}`);
     if (!card) return;
-    card.classList.remove("vote-sparkle");
+    card.classList.remove("vote-glow");
     void card.offsetWidth;
-    card.classList.add("vote-sparkle");
-    setTimeout(() => card.classList.remove("vote-sparkle"), 950);
+    card.classList.add("vote-glow");
+    setTimeout(() => card.classList.remove("vote-glow"), 900);
   }
 
-  function sighCard(postId){
+  function unvoteSad(postId){
     const card = document.getElementById(`card-${postId}`);
     if (!card) return;
-    card.classList.remove("unvote-sigh");
+
+    // VOIDスタンプを一瞬だけ出す
+    const stamp = document.createElement("div");
+    stamp.className = "unvote-stamp";
+    stamp.textContent = "VOID";
+    card.appendChild(stamp);
+    setTimeout(() => stamp.remove(), 1050);
+
+    card.classList.remove("unvote-sad");
     void card.offsetWidth;
-    card.classList.add("unvote-sigh");
-    setTimeout(() => card.classList.remove("unvote-sigh"), 600);
+    card.classList.add("unvote-sad");
+    setTimeout(() => card.classList.remove("unvote-sad"), 900);
   }
 
   // ---------- Vote (AJAX) ----------
@@ -533,11 +596,11 @@ document.addEventListener("DOMContentLoaded", function () {
         // motion
         if (voted) {
           flashCard(data.post_id);
-          sparkleCard(data.post_id);
-          showToast("VOTED ✦", "Curated with taste.");
+          voteGlow(data.post_id);              // ★写真全体が光る
+          showToast("VOTED ✦", "A quiet brilliance.");
         } else {
-          sighCard(data.post_id);
-          showToast("REMOVED", "A quiet goodbye.");
+          unvoteSad(data.post_id);             // ★はっきり寂しい
+          showToast("REMOVED", "A little lonely.");
         }
 
       } catch (_) {
@@ -546,9 +609,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     });
   });
-
-  // 補足：小さい画像をフルスクリーンで拡大すると、元が小さいほど“ぼけ”は出ます。
-  // それを本当に綺麗にするには、サーバー側でAIアップスケール（別実装）が必要です。
 });
 </script>
 
