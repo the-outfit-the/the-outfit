@@ -22,12 +22,12 @@ body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#0
 .post{border-radius:22px;overflow:hidden;}
 .post-inner{background:var(--card);border-radius:22px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02);padding:10px;height:100%;display:flex;flex-direction:column;}
 
-/* ★リロード時の“一瞬ゆがむ”対策：枠サイズを先に確定させる */
+/* 枠を固定してゆがみ防止 */
 .post-img-wrap{
   border-radius:18px;
   overflow:hidden;
   margin-bottom:10px;
-  aspect-ratio: 4 / 5; /* ここを好みで 3/4 や 1/1 に変えてOK */
+  aspect-ratio: 4 / 5;
   background:#050507;
 }
 .post-img-wrap img{
@@ -107,7 +107,7 @@ form.inline{display:inline;margin:0;}
   {% if posts %}
   <div class="posts">
     {% for p in posts %}
-    <div class="post">
+    <div class="post" data-post-id="{{ p['id'] }}">
       <div class="post-inner">
         <div class="post-img-wrap">
           <img
@@ -122,24 +122,33 @@ form.inline{display:inline;margin:0;}
 
         <div class="post-meta">
           <div class="post-user">{{ p['user'] }}</div>
-          <div class="post-votes">{{ p['votes'] }} VOTES</div>
+          <div class="post-votes" id="votes-{{ p['id'] }}">{{ p['votes'] }} VOTES</div>
         </div>
 
-        <div class="actions">
+        <div class="actions" id="actions-{{ p['id'] }}">
           {% if is_logged_in %}
             {% if p['id'] in voted_ids %}
-              <form class="inline" method="post" action="{{ url_for('unvote', post_id=p['id']) }}">
+              <form class="inline vote-form"
+                    method="post"
+                    action="{{ url_for('unvote', post_id=p['id']) }}"
+                    data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
+                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}"
+                    data-voted="1">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
               </form>
             {% else %}
-              <form class="inline" method="post" action="{{ url_for('vote', post_id=p['id']) }}">
+              <form class="inline vote-form"
+                    method="post"
+                    action="{{ url_for('vote', post_id=p['id']) }}"
+                    data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
+                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}"
+                    data-voted="0">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-vote" type="submit">VOTE</button>
               </form>
             {% endif %}
           {% else %}
-            <!-- ★未ログインでもVOTEボタンは表示。押すとログインへ誘導 -->
             <a class="btn btn-vote" href="{{ url_for('login', next='/') }}">VOTE</a>
           {% endif %}
         </div>
@@ -164,6 +173,7 @@ form.inline{display:inline;margin:0;}
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
+  // ルックブック表示
   const imgs = document.querySelectorAll(".look-img");
   const overlay = document.getElementById("lookbookOverlay");
   const overlayImg = document.getElementById("lookbookImage");
@@ -178,9 +188,72 @@ document.addEventListener("DOMContentLoaded", function () {
       overlay.classList.add("show");
     });
   });
-
   overlay.addEventListener("click", function () {
     overlay.classList.remove("show");
+  });
+
+  // ★投票をリロード無しに（画像が歪まない）
+  const voteForms = document.querySelectorAll(".vote-form");
+  voteForms.forEach((form) => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      try {
+        const res = await fetch(form.action, {
+          method: "POST",
+          headers: {
+            "Accept": "application/json",
+            "X-Requested-With": "fetch"
+          },
+          body: new FormData(form),
+          credentials: "same-origin"
+        });
+
+        if (!res.ok) {
+          // 何かあれば通常遷移にフォールバック
+          form.submit();
+          return;
+        }
+
+        const data = await res.json();
+        if (!data || !data.ok) {
+          form.submit();
+          return;
+        }
+
+        // 票数更新
+        const votesEl = document.getElementById(`votes-${data.post_id}`);
+        if (votesEl) votesEl.textContent = `${data.votes} VOTES`;
+
+        // 画像のdata-votesも更新（フルスクリーン表示に反映）
+        const card = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
+        if (card) {
+          const img = card.querySelector(".look-img");
+          if (img) img.setAttribute("data-votes", String(data.votes));
+        }
+
+        // ボタン切り替え
+        const voted = !!data.voted;
+        form.dataset.voted = voted ? "1" : "0";
+        form.action = voted ? form.dataset.unvoteUrl : form.dataset.voteUrl;
+
+        const btn = form.querySelector("button");
+        if (btn) {
+          if (voted) {
+            btn.textContent = "REMOVE VOTE";
+            btn.classList.remove("btn-vote");
+            btn.classList.add("btn-unvote");
+          } else {
+            btn.textContent = "VOTE";
+            btn.classList.remove("btn-unvote");
+            btn.classList.add("btn-vote");
+          }
+        }
+      } catch (_) {
+        // 通常遷移にフォールバック
+        form.submit();
+      }
+    });
   });
 });
 </script>

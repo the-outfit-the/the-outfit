@@ -8,16 +8,13 @@ from datetime import timedelta
 
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, flash, abort, send_from_directory
+    url_for, session, flash, abort, send_from_directory, jsonify
 )
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 
-# =========================
-# 保存先（Render Disk対応）
-# =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Renderで有料 + Disk を使うときだけ DATA_DIR=/var/data を設定する
@@ -28,9 +25,6 @@ UPLOAD_FOLDER = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
-# =========================
-# アプリ設定
-# =========================
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
 
@@ -39,7 +33,6 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")  # prodでは�
 
 USERNAME_RE = re.compile(r"^[a-zA-Z0-9_\-]{3,20}$")  # 3-20文字
 
-# セキュリティヘッダ（必要なら調整OK）
 CSP = (
     "default-src 'self'; "
     "img-src 'self' data:; "
@@ -50,7 +43,6 @@ CSP = (
     "frame-ancestors 'none'; "
 )
 
-# 簡易レート制限（単一プロセス向け）
 _RATE_BUCKET = {}
 RATE_WINDOW_SEC = 60
 RATE_LIMITS = {
@@ -65,18 +57,13 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.permanent_session_lifetime = timedelta(days=7)
 
-# Render等プロキシ配下で request.is_secure を正しくする
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
-# Cookie保護
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = (APP_ENV == "prod")  # prodはHTTPS前提
+app.config["SESSION_COOKIE_SECURE"] = (APP_ENV == "prod")
 
 
-# =========================
-# DB
-# =========================
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -120,9 +107,6 @@ def init_db():
 init_db()
 
 
-# =========================
-# 共通ユーティリティ
-# =========================
 def client_ip() -> str:
     return request.remote_addr or "unknown"
 
@@ -152,7 +136,6 @@ def allowed_ext(filename: str) -> bool:
 
 def require_login():
     if "user" not in session:
-        # 次に戻れるように next を付ける
         return redirect(url_for("login", next=request.path))
     return None
 
@@ -170,6 +153,14 @@ def csrf_validate():
     token = session.get("csrf_token", "")
     if not token or not sent or not secrets.compare_digest(token, sent):
         abort(400)
+
+
+def is_ajax_json_request() -> bool:
+    # home.html から fetch で投票を投げるときに付けるヘッダで判定
+    return (
+        request.headers.get("X-Requested-With", "") == "fetch"
+        or "application/json" in (request.headers.get("Accept", "") or "")
+    )
 
 
 @app.context_processor
@@ -195,18 +186,14 @@ def too_many(_):
     return "Too Many Requests", 429
 
 
-# =========================
-# ルート
-# =========================
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
-# ★ランキング公開：誰でも見れる
 @app.route("/", methods=["GET"])
 def home():
-    user = session.get("user")  # ログインしてない場合は None
+    user = session.get("user")
 
     conn = get_db()
     cur = conn.cursor()
@@ -257,9 +244,8 @@ def login():
             session.clear()
             session["user"] = name
             session.permanent = True
-            session["csrf_token"] = secrets.token_urlsafe(32)  # ログイン時に再生成
+            session["csrf_token"] = secrets.token_urlsafe(32)
 
-            # next があればそこへ戻す（安全のため内部パスのみ想定）
             nxt = request.args.get("next") or url_for("home")
             if not nxt.startswith("/"):
                 nxt = url_for("home")
@@ -348,7 +334,6 @@ def upload():
     return render_template("upload.html")
 
 
-# ★投票はログイン必須
 @app.route("/vote/<int:post_id>", methods=["POST"])
 def vote(post_id):
     r = require_login()
@@ -367,6 +352,13 @@ def vote(post_id):
         cur.execute("INSERT INTO votes (user, post_id) VALUES (?, ?)", (user, post_id))
         cur.execute("UPDATE posts SET votes = votes + 1 WHERE id = ?", (post_id,))
         conn.commit()
+
+    # AjaxならJSONで返す（ページをリロードしない）
+    if is_ajax_json_request():
+        cur.execute("SELECT votes FROM posts WHERE id = ?", (post_id,))
+        row = cur.fetchone()
+        conn.close()
+        return jsonify({"ok": True, "post_id": post_id, "votes": int(row["votes"]) if row else 0, "voted": True})
 
     conn.close()
     return redirect(url_for("home"))
@@ -393,6 +385,12 @@ def unvote(post_id):
             (post_id,)
         )
         conn.commit()
+
+    if is_ajax_json_request():
+        cur.execute("SELECT votes FROM posts WHERE id = ?", (post_id,))
+        row = cur.fetchone()
+        conn.close()
+        return jsonify({"ok": True, "post_id": post_id, "votes": int(row["votes"]) if row else 0, "voted": False})
 
     conn.close()
     return redirect(url_for("home"))
