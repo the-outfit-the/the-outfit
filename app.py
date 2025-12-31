@@ -14,17 +14,35 @@ from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.middleware.proxy_fix import ProxyFix
 
+
+# =========================
+# 保存先（Render Disk対応）
+# =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DB_PATH = os.path.join(BASE_DIR, "the_outfit.db")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
+
+# Renderでは DATA_DIR=/var/data を環境変数で渡す（Diskのmount pathと一致させる）
+DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
+
+DB_PATH = os.path.join(DATA_DIR, "the_outfit.db")
+UPLOAD_FOLDER = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# ローカルでプロジェクト直下に uploads/ を置いてる場合もあるので、あってもOK
+# （ただし実際に使うのは UPLOAD_FOLDER=DATA_DIR/uploads）
+
+
+# =========================
+# アプリ設定
+# =========================
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
 
 APP_ENV = os.environ.get("APP_ENV", "dev").lower()  # dev / prod
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
+SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")  # prodでは必ず上書き
 
+USERNAME_RE = re.compile(r"^[a-zA-Z0-9_\-]{3,20}$")  # 3-20文字
+
+# セキュリティヘッダ（必要なら調整OK）
 CSP = (
     "default-src 'self'; "
     "img-src 'self' data:; "
@@ -35,24 +53,33 @@ CSP = (
     "frame-ancestors 'none'; "
 )
 
+# 簡易レート制限（単一プロセス向け）
 _RATE_BUCKET = {}
 RATE_WINDOW_SEC = 60
-RATE_LIMITS = {"login": 20, "register": 10, "upload": 20}
-
-USERNAME_RE = re.compile(r"^[a-zA-Z0-9_\-]{3,20}$")
+RATE_LIMITS = {
+    "login": 20,
+    "register": 10,
+    "upload": 20,
+}
 
 app = Flask(__name__)
 app.secret_key = SECRET_KEY
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 app.permanent_session_lifetime = timedelta(days=7)
+
+# Render等プロキシ配下で request.is_secure を正しくする
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
+# Cookie保護
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = (APP_ENV == "prod")
+app.config["SESSION_COOKIE_SECURE"] = (APP_ENV == "prod")  # prodはHTTPS前提
 
 
+# =========================
+# DB
+# =========================
 def get_db():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -62,6 +89,7 @@ def get_db():
 def init_db():
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             name TEXT PRIMARY KEY,
@@ -69,6 +97,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,6 +107,7 @@ def init_db():
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
+
     cur.execute("""
         CREATE TABLE IF NOT EXISTS votes (
             user TEXT NOT NULL,
@@ -85,14 +115,19 @@ def init_db():
             PRIMARY KEY (user, post_id)
         )
     """)
+
     conn.commit()
     conn.close()
 
 
+# gunicorn/Renderでも必ずDBが初期化される
 init_db()
 
 
-def client_ip():
+# =========================
+# 共通ユーティリティ
+# =========================
+def client_ip() -> str:
     return request.remote_addr or "unknown"
 
 
@@ -100,13 +135,17 @@ def rate_limit(action: str):
     limit = RATE_LIMITS.get(action)
     if not limit:
         return
+
     ip = client_ip()
     now = time.time()
     key = (ip, action)
+
     bucket = _RATE_BUCKET.get(key, [])
     bucket = [t for t in bucket if now - t < RATE_WINDOW_SEC]
+
     if len(bucket) >= limit:
         abort(429)
+
     bucket.append(now)
     _RATE_BUCKET[key] = bucket
 
@@ -146,8 +185,10 @@ def set_security_headers(resp):
     resp.headers["X-Content-Type-Options"] = "nosniff"
     resp.headers["X-Frame-Options"] = "DENY"
     resp.headers["Referrer-Policy"] = "no-referrer"
-    resp.headers["Content-Security-Policy"] = CSP
     resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    resp.headers["Content-Security-Policy"] = CSP
+
+    # 本番HTTPSのときだけHSTS（HTTPに付けると事故る）
     if APP_ENV == "prod" and request.is_secure:
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return resp
@@ -158,8 +199,12 @@ def too_many(_):
     return "Too Many Requests", 429
 
 
+# =========================
+# ルート
+# =========================
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
+    # 保存時にランダム名で secure_filename 済み
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
@@ -186,7 +231,7 @@ def login():
             session.clear()
             session["user"] = name
             session.permanent = True
-            session["csrf_token"] = secrets.token_urlsafe(32)
+            session["csrf_token"] = secrets.token_urlsafe(32)  # ログイン時に再生成
             return redirect(url_for("home"))
 
         flash("ユーザー名またはパスワードが違います。")
@@ -235,7 +280,7 @@ def register():
     return render_template("register.html")
 
 
-@app.route("/home")
+@app.route("/home", methods=["GET"])
 def home():
     r = require_login()
     if r:
@@ -245,16 +290,18 @@ def home():
 
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("""
         SELECT id, user, filename, votes
         FROM posts
         ORDER BY votes DESC, created_at DESC
     """)
     posts = cur.fetchall()
+
     cur.execute("SELECT post_id FROM votes WHERE user = ?", (user,))
     voted_ids = {row["post_id"] for row in cur.fetchall()}
-    conn.close()
 
+    conn.close()
     return render_template("home.html", user=user, posts=posts, voted_ids=voted_ids)
 
 
@@ -283,7 +330,10 @@ def upload():
 
         conn = get_db()
         cur = conn.cursor()
-        cur.execute("INSERT INTO posts (user, filename, votes) VALUES (?, ?, 0)", (session["user"], filename))
+        cur.execute(
+            "INSERT INTO posts (user, filename, votes) VALUES (?, ?, 0)",
+            (session["user"], filename)
+        )
         conn.commit()
         conn.close()
 
@@ -302,12 +352,15 @@ def vote(post_id):
     user = session["user"]
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("SELECT 1 FROM votes WHERE user = ? AND post_id = ?", (user, post_id))
     already = cur.fetchone()
+
     if not already:
         cur.execute("INSERT INTO votes (user, post_id) VALUES (?, ?)", (user, post_id))
         cur.execute("UPDATE posts SET votes = votes + 1 WHERE id = ?", (post_id,))
         conn.commit()
+
     conn.close()
     return redirect(url_for("home"))
 
@@ -322,12 +375,18 @@ def unvote(post_id):
     user = session["user"]
     conn = get_db()
     cur = conn.cursor()
+
     cur.execute("SELECT 1 FROM votes WHERE user = ? AND post_id = ?", (user, post_id))
     exists = cur.fetchone()
+
     if exists:
         cur.execute("DELETE FROM votes WHERE user = ? AND post_id = ?", (user, post_id))
-        cur.execute("UPDATE posts SET votes = CASE WHEN votes > 0 THEN votes - 1 ELSE 0 END WHERE id = ?", (post_id,))
+        cur.execute(
+            "UPDATE posts SET votes = CASE WHEN votes > 0 THEN votes - 1 ELSE 0 END WHERE id = ?",
+            (post_id,)
+        )
         conn.commit()
+
     conn.close()
     return redirect(url_for("home"))
 
@@ -340,4 +399,5 @@ def logout():
 
 
 if __name__ == "__main__":
+    # ローカル実行
     app.run(host="0.0.0.0", port=5000)
