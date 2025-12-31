@@ -92,21 +92,21 @@ body{
   transform:translateZ(0);
 }
 
-/* Purple overlay (unvote) */
+/* purple overlay (unvote) */
 .post-img-wrap::after{
   content:"";
   position:absolute;inset:0;
   pointer-events:none;
   opacity:0;
-  z-index:20; /* imageより上、星より下 */
+  z-index:40;   /* 星より下 */
 }
 
-/* ★ star layer: ABSOLUTELY above the image */
+/* ★ stars must be ABOVE image */
 .star-layer{
   position:absolute; inset:0;
   pointer-events:none;
   overflow:hidden;
-  z-index:30; /* 画像より上 */
+  z-index:60;   /* 画像より上 */
 }
 
 /* image itself */
@@ -126,12 +126,18 @@ body{
   filter:saturate(1.05) contrast(1.02);
 }
 
+/* meta */
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
 .post-user{font-weight:500;letter-spacing:.04em;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
 .count-pop{animation:countPop .34s var(--ease) 1;}
-@keyframes countPop{0%{transform:translateY(2px);opacity:.65;}60%{transform:translateY(-3px);opacity:1;}100%{transform:translateY(0);opacity:1;}}
+@keyframes countPop{
+  0%{transform:translateY(2px);opacity:.65;}
+  60%{transform:translateY(-3px);opacity:1;}
+  100%{transform:translateY(0);opacity:1;}
+}
 
+/* actions */
 .actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
 .btn{
   display:inline-flex;align-items:center;justify-content:center;
@@ -168,52 +174,49 @@ body{
 }
 
 /* ============================
-   VOTE: SVG big stars (確実に星に見える)
+   VOTE: “確実に見える” 星（ベタ塗り+強グロー）
    ============================ */
 .post-inner.vote-stars .post-img-wrap img{
   filter:saturate(1.18) contrast(1.06) brightness(1.08);
 }
 
-/* SVG star element */
-.star-svg{
+.starBurst{
   position:absolute;
-  opacity:0_help; /* never used (typo guard) */
-}
-.starSvg{
-  position:absolute;
-  width:320px;
-  height:320px;
+  width:520px;
+  height:520px;
   opacity:0;
-  transform:translateZ(0) scale(.76) rotate(-10deg);
-  will-change:opacity, transform;
+  transform:scale(.70) rotate(-10deg);
+  transform-origin:center;
+  will-change:opacity, transform, filter;
+  mix-blend-mode:screen;
   filter:
-    drop-shadow(0 0 18px rgba(255,255,255,.55))
-    drop-shadow(0 0 52px rgba(230,194,122,.55))
-    drop-shadow(0 0 92px rgba(230,194,122,.28));
-  animation:starPulse var(--dur, 1300ms) ease-in-out 1;
+    drop-shadow(0 0 22px rgba(255,255,255,.70))
+    drop-shadow(0 0 70px rgba(230,194,122,.62))
+    drop-shadow(0 0 140px rgba(230,194,122,.30));
+  animation:starBlink var(--dur, 1700ms) ease-in-out 1;
 }
 
-/* “出たり消えたり”を強く、3回くらい明滅 */
-@keyframes starPulse{
-  0%   {opacity:0;   transform:scale(.68) rotate(-12deg);}
+.starBurst svg{width:100%;height:100%;display:block;}
+
+@keyframes starBlink{
+  0%   {opacity:0;   transform:scale(.62) rotate(-12deg);}
   12%  {opacity:1;   transform:scale(1.02) rotate(0deg);}
-  26%  {opacity:.10; transform:scale(.84) rotate(6deg);}
-  40%  {opacity:1;   transform:scale(1.05) rotate(0deg);}
-  56%  {opacity:.10; transform:scale(.84) rotate(-6deg);}
-  72%  {opacity:1;   transform:scale(1.03) rotate(0deg);}
-  100% {opacity:0;   transform:scale(.70) rotate(10deg);}
+  26%  {opacity:.10; transform:scale(.80) rotate(6deg);}
+  40%  {opacity:1;   transform:scale(1.06) rotate(0deg);}
+  56%  {opacity:.10; transform:scale(.80) rotate(-6deg);}
+  70%  {opacity:1;   transform:scale(1.03) rotate(0deg);}
+  100% {opacity:0;   transform:scale(.66) rotate(10deg);}
 }
 
 /* ============================
-   UNVOTE: purple mid (前回と今回の中間)
-   - じわっと沈む → じわっと戻る
-   - バウンドなし
+   UNVOTE: もう少し暗い紫（中間より1段だけ暗く）
+   じわっと沈む→じわっと戻る / バウンドなし
    ============================ */
 .post-inner.unvote-purple .post-img-wrap::after{
   background:
-    radial-gradient(circle at 50% 50%, rgba(70,20,120,.44), rgba(18,4,40,.72)),
-    radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,.62) 100%),
-    linear-gradient(180deg, rgba(75,20,130,.10), rgba(0,0,0,.55));
+    radial-gradient(circle at 50% 50%, rgba(62,14,110,.58), rgba(16,4,38,.78)),
+    radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,.64) 100%),
+    linear-gradient(180deg, rgba(70,18,125,.12), rgba(0,0,0,.58));
   mix-blend-mode:multiply;
   animation:purpleFade 1500ms ease-in-out 1;
 }
@@ -222,16 +225,16 @@ body{
 }
 @keyframes purpleFade{
   0%   {opacity:0;}
-  55%  {opacity:1;}   /* じわっと暗紫へ */
-  100% {opacity:0;}   /* じわっと戻る */
+  55%  {opacity:1;}
+  100% {opacity:0;}
 }
 @keyframes purpleImg{
   0%   {filter:none;}
-  55%  {filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.66);}
+  55%  {filter:grayscale(.26) saturate(.48) contrast(.98) brightness(.62);}
   100% {filter:none;}
 }
 
-/* Ribbons/Stamps */
+/* ribbons/stamps */
 .ribbon{
   position:absolute;
   left:14px; top:14px;
@@ -250,7 +253,7 @@ body{
   opacity:0;
   pointer-events:none;
   animation:ribbonIn 1200ms var(--ease) 1;
-  z-index:60;
+  z-index:80;
 }
 .ribbon .dot{
   width:8px;height:8px;border-radius:50%;
@@ -281,7 +284,7 @@ body{
   opacity:0;
   pointer-events:none;
   animation:stampIn 1300ms ease-in-out 1;
-  z-index:60;
+  z-index:80;
 }
 @keyframes stampIn{
   0%{opacity:0; transform:rotate(-10deg) translateY(18px) scale(.98);}
@@ -290,12 +293,12 @@ body{
   100%{opacity:0; transform:rotate(-10deg) translateY(-10px) scale(1.01);}
 }
 
-/* Note/empty */
+/* misc */
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
 @media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
 
-/* Lookbook */
+/* lookbook */
 .lookbook-overlay{
   position:fixed;inset:0;padding:24px;
   background:rgba(5,5,7,.92);
@@ -342,7 +345,7 @@ body{
   .lookbook-image-wrap img{max-height:calc(100vh - 140px);}
 }
 
-/* Toast */
+/* toast */
 .toast{
   position:fixed;
   right:18px;
@@ -495,9 +498,7 @@ document.addEventListener("DOMContentLoaded", function () {
       overlay.classList.add("show");
     });
   });
-  overlay.addEventListener("click", function () {
-    overlay.classList.remove("show");
-  });
+  overlay.addEventListener("click", function () { overlay.classList.remove("show"); });
 
   // Toast
   const toast = document.getElementById("toast");
@@ -541,42 +542,34 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
 
-  // ★ SVG Star (確実に星に見える)
-  function makeStarSVG(size, durMs, delayMs){
-    const gid = "g" + Math.random().toString(16).slice(2);
-    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    svg.setAttribute("viewBox", "0 0 100 100");
-    svg.classList.add("starSvg");
-    svg.style.width = size + "px";
-    svg.style.height = size + "px";
-    svg.style.setProperty("--dur", durMs + "ms");
-    svg.style.animationDelay = delayMs + "ms";
+  // ★ 100%見える星（ベタ塗りSVG + 強いグロー）
+  function makeStarBurst(size, durMs, delayMs){
+    const d = document.createElement("div");
+    d.className = "starBurst";
+    d.style.width = size + "px";
+    d.style.height = size + "px";
+    d.style.setProperty("--dur", durMs + "ms");
+    d.style.animationDelay = delayMs + "ms";
 
-    // 5-point star polygon
-    svg.innerHTML = `
-      <defs>
-        <radialGradient id="${gid}" cx="35%" cy="30%" r="70%">
-          <stop offset="0%" stop-color="rgba(255,255,255,1)"/>
-          <stop offset="18%" stop-color="rgba(255,255,255,1)"/>
-          <stop offset="44%" stop-color="rgba(230,194,122,1)"/>
-          <stop offset="68%" stop-color="rgba(230,194,122,.55)"/>
-          <stop offset="100%" stop-color="rgba(230,194,122,0)"/>
-        </radialGradient>
-      </defs>
-
-      <polygon
-        points="50,3 61,36 96,38 68,58 78,92 50,73 22,92 32,58 4,38 39,36"
-        fill="url(#${gid})"
-        stroke="rgba(255,255,255,.55)"
-        stroke-width="1.2"
-      />
-
-      <polygon
-        points="50,12 58,38 86,40 64,56 72,82 50,67 28,82 36,56 14,40 42,38"
-        fill="rgba(255,255,255,.28)"
-      />
+    // ベタ塗り＋白フチ＋内側の薄い星（確実に見える）
+    d.innerHTML = `
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <polygon
+          points="50,3 61,36 96,38 68,58 78,92 50,73 22,92 32,58 4,38 39,36"
+          fill="#E6C27A"
+          opacity="0.92"
+          stroke="#FFFFFF"
+          stroke-opacity="0.70"
+          stroke-width="1.6"
+        />
+        <polygon
+          points="50,12 58,38 86,40 64,56 72,82 50,67 28,82 36,56 14,40 42,38"
+          fill="#FFFFFF"
+          opacity="0.22"
+        />
+      </svg>
     `;
-    return svg;
+    return d;
   }
 
   function spawnStars(card){
@@ -584,24 +577,29 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!layer) return;
     layer.innerHTML = "";
 
-    // でかい星を “写真全体” に複数、少しずつ遅らせて点滅
+    // まず“中央に超デカ星”を必ず出す（見えない問題を潰す）
+    const big = makeStarBurst(680, 1900, 0);
+    big.style.left = "calc(50% - 340px)";
+    big.style.top  = "calc(50% - 340px)";
+    layer.appendChild(big);
+
+    // 周辺にも追加（写真全体に感じるように）
     const stars = [
-      { x: 14, y: 18, s: 360, d: 1400, t: 0   },
-      { x: 78, y: 20, s: 300, d: 1300, t: 120 },
-      { x: 30, y: 76, s: 380, d: 1500, t: 220 },
-      { x: 84, y: 74, s: 320, d: 1350, t: 320 },
-      { x: 52, y: 46, s: 420, d: 1600, t: 160 }
+      { x: 16, y: 18, s: 520, d: 1700, t: 120 },
+      { x: 82, y: 20, s: 460, d: 1650, t: 220 },
+      { x: 24, y: 82, s: 560, d: 1800, t: 320 },
+      { x: 86, y: 78, s: 480, d: 1700, t: 420 }
     ];
 
     stars.forEach((p) => {
-      const svg = makeStarSVG(p.s, p.d, p.t);
-      svg.style.left = `calc(${p.x}% - ${p.s/2}px)`;
-      svg.style.top  = `calc(${p.y}% - ${p.s/2}px)`;
-      layer.appendChild(svg);
+      const el = makeStarBurst(p.s, p.d, p.t);
+      el.style.left = `calc(${p.x}% - ${p.s/2}px)`;
+      el.style.top  = `calc(${p.y}% - ${p.s/2}px)`;
+      layer.appendChild(el);
     });
 
-    // 後片付け（表示時間を十分に）
-    setTimeout(() => { layer.innerHTML = ""; }, 2200);
+    // 後片付け
+    setTimeout(() => { layer.innerHTML = ""; }, 2400);
   }
 
   // Vote (AJAX)
@@ -666,12 +664,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 2200);
-          spawnStars(card); // ★確実に見える星（SVG）
+          addOnce(card, "vote-stars", 2400);
+          spawnStars(card);          // ★必ず見える星
           addRibbon(card);
           showToast("VOTED ✦", "Stars sparkle.");
         } else {
-          addOnce(card, "unvote-purple", 1600); // ★紫は中間に
+          addOnce(card, "unvote-purple", 1600); // ★紫は少し暗く
           addStamp(card);
           showToast("UNVOTED", "Purple fade.");
         }
