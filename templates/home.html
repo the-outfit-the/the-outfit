@@ -174,37 +174,34 @@ body{
 }
 
 /* ============================
-   VOTE: 強い光 + “短い周期”でキラめき
+   VOTE: 星（強い色）＋点滅はJSで確実制御
    ============================ */
 .post-inner.vote-stars .post-img-wrap img{
   filter:saturate(1.12) contrast(1.05) brightness(1.04);
 }
-
 .sparkStar{
   position:absolute;
   width:var(--s, 10px);
   height:var(--s, 10px);
   opacity:0;
-  transform:scale(.7) rotate(var(--r,0deg));
+  transform:scale(.75) rotate(var(--r,0deg));
   transform-origin:center;
   will-change:opacity, transform, filter;
   mix-blend-mode:normal;
 
+  /* 色はだいぶ強く */
   filter:
     drop-shadow(0 0 2px rgba(255,255,255,1))
-    drop-shadow(0 0 7px rgba(255,255,255,.92))
-    drop-shadow(0 0 16px rgba(255,255,255,.55))
+    drop-shadow(0 0 8px rgba(255,255,255,.95))
+    drop-shadow(0 0 18px rgba(255,255,255,.60))
     drop-shadow(0 0 14px rgba(230,194,122,1))
-    drop-shadow(0 0 30px rgba(230,194,122,.80))
-    drop-shadow(0 0 52px rgba(230,194,122,.55));
-
-  transition:opacity 60ms linear, transform 60ms linear; /* ★短い瞬き */
+    drop-shadow(0 0 34px rgba(230,194,122,.85))
+    drop-shadow(0 0 58px rgba(230,194,122,.60));
 }
 .sparkStar svg{width:100%;height:100%;display:block;}
-
 .sparkStar.on{
   opacity:1;
-  transform:scale(var(--k, 2.0)) rotate(var(--r,0deg));
+  transform:scale(var(--k, 2.2)) rotate(var(--r,0deg));
 }
 
 /* ribbons/stamps */
@@ -360,10 +357,10 @@ body{
 
 form.inline{display:inline;margin:0;}
 
+/* reduce motion: 星の点滅は止めない（ここ重要） */
 @media (prefers-reduced-motion: reduce){
   .post-inner{transition:none !important;}
   .post-inner:hover{transform:none !important;}
-  .sparkStar{opacity:.45 !important;}
   .post-inner.unvote-purple .post-img-wrap::after{animation:none !important; opacity:1 !important;}
   .post-inner.unvote-purple .post-img-wrap img{animation:none !important; filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64) !important;}
 }
@@ -539,7 +536,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
   function rnd(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
-  function choice(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+  function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 
   function makeSparkStar(sizePx, rotDeg, warm){
     const d = document.createElement("div");
@@ -550,55 +547,62 @@ document.addEventListener("DOMContentLoaded", function () {
     const fill = warm ? "#E6C27A" : "#FFFFFF";
     d.innerHTML = `
       <svg viewBox="0 0 100 100" aria-hidden="true">
-        <polygon
-          points="50,10 60,40 90,50 60,60 50,90 40,60 10,50 40,40"
-          fill="${fill}"
-          opacity="0.98"
-        />
+        <polygon points="50,10 60,40 90,50 60,60 50,90 40,60 10,50 40,40"
+                 fill="${fill}" opacity="0.98"/>
       </svg>
     `;
     return d;
   }
 
-  // ★短周期きらめき：tickを短く + 点灯寿命を短く
-  function startShimmer(stars, durationMs){
-    const endAt = performance.now() + durationMs;
+  // ★確実に「きらめく」：rAF + 寿命管理（設計を安定化）
+  function runSparkle(stars, durationMs){
+    const tickMs = 38;                 // ★周期を短く（キラキラ感）
+    const lifeMin = 55;                // ★光ってる寿命も短く
+    const lifeMax = 95;
 
-    const tickMs = 45;                 // ★短く（速いきらめき）
-    const lifeMsMin = 70;              // ★光ってる時間も短い
-    const lifeMsMax = 120;
+    let endAt = performance.now() + durationMs;
+    let last = performance.now();
+    let acc = 0;
 
-    // 1) まず全消灯しない（少し残して“きらめき”）
-    //    2) 追加でランダム点灯して“瞬く”
-    const timer = setInterval(() => {
-      const now = performance.now();
+    // TTL管理
+    for (const s of stars) s.__ttl = 0;
+
+    function frame(now){
       if (now >= endAt){
-        clearInterval(timer);
-        stars.forEach(s => s.classList.remove("on"));
+        for (const s of stars){ s.__ttl = 0; s.classList.remove("on"); }
         return;
       }
 
-      // 残像: ある程度は消す（でも全消灯しない）
-      const offCount = Math.floor(stars.length * 0.65);
-      for (let i=0;i<offCount;i++){
-        stars[rnd(0, stars.length - 1)].classList.remove("on");
+      const dt = now - last;
+      last = now;
+      acc += dt;
+
+      while (acc >= tickMs){
+        acc -= tickMs;
+
+        // 1) 全部減衰（確実に点滅が見えるように“消える瞬間”を作る）
+        for (const s of stars){
+          if (s.__ttl > 0){
+            s.__ttl -= tickMs;
+            if (s.__ttl <= 0) s.classList.remove("on");
+          }
+        }
+
+        // 2) このtickで新しく光る星を追加
+        const spawn = 14; // ★短い周期でも見える量
+        for (let i=0;i<spawn;i++){
+          const s = stars[rnd(0, stars.length - 1)];
+          const k = pick([1.6, 1.8, 2.0, 2.2, 2.4, 2.6]); // キラッ
+          s.style.setProperty("--k", String(k));
+          s.__ttl = rnd(lifeMin, lifeMax);
+          s.classList.add("on");
+        }
       }
 
-      // このtickで新しく光る数（少量を高速に）
-      const onCount = Math.max(8, Math.floor(stars.length * 0.12));
-      for (let i=0;i<onCount;i++){
-        const s = stars[rnd(0, stars.length - 1)];
-        const k = choice([1.6, 1.8, 2.0, 2.2, 2.4, 2.6]); // 強くキラッ
-        s.style.setProperty("--k", String(k));
-        s.classList.add("on");
+      requestAnimationFrame(frame);
+    }
 
-        // すぐ消える（瞬き）
-        const life = rnd(lifeMsMin, lifeMsMax);
-        setTimeout(() => s.classList.remove("on"), life);
-      }
-    }, tickMs);
-
-    setTimeout(() => { clearInterval(timer); }, durationMs + 200);
+    requestAnimationFrame(frame);
   }
 
   function spawnStars(card){
@@ -606,7 +610,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!layer) return;
     layer.innerHTML = "";
 
-    const starCount = 90;
+    const starCount = 70;  // ★多すぎると“常時光ってる”に見えるので少し減らす
     const pad = 4;
     const stars = [];
 
@@ -624,9 +628,9 @@ document.addEventListener("DOMContentLoaded", function () {
       stars.push(el);
     }
 
-    const shimmerDuration = 8200;
-    startShimmer(stars, shimmerDuration);
-    setTimeout(() => { layer.innerHTML = ""; }, shimmerDuration + 300);
+    const dur = 8200;
+    runSparkle(stars, dur);
+    setTimeout(() => { layer.innerHTML = ""; }, dur + 300);
   }
 
   // Vote (AJAX)
@@ -646,24 +650,13 @@ document.addEventListener("DOMContentLoaded", function () {
           credentials: "same-origin"
         });
 
-        if (!res.ok) {
-          if (btn) btn.classList.remove("btn-loading");
-          form.submit();
-          return;
-        }
+        if (!res.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
 
         const data = await res.json();
-        if (!data || !data.ok) {
-          if (btn) btn.classList.remove("btn-loading");
-          form.submit();
-          return;
-        }
+        if (!data || !data.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
 
         const votesEl = document.getElementById(`votes-${data.post_id}`);
-        if (votesEl) {
-          votesEl.textContent = `${data.votes} VOTES`;
-          popCount(votesEl);
-        }
+        if (votesEl) { votesEl.textContent = `${data.votes} VOTES`; popCount(votesEl); }
 
         const wrap = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
         if (wrap) {
@@ -694,7 +687,7 @@ document.addEventListener("DOMContentLoaded", function () {
           addOnce(card, "vote-stars", 8500);
           spawnStars(card);
           addRibbon(card);
-          showToast("VOTED ✦", "FAST shimmer.");
+          showToast("VOTED ✦", "FAST sparkle.");
         } else {
           addOnce(card, "unvote-purple", 1600);
           addStamp(card);
