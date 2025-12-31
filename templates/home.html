@@ -109,6 +109,17 @@ body{
   z-index:60;
 }
 
+/* ★Canvas（軽い・速い点滅） */
+.sparkle-canvas{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+  z-index:60;
+  mix-blend-mode:screen;
+}
+
 /* image itself */
 .post-img-wrap img{
   position:relative;
@@ -173,35 +184,9 @@ body{
   100%{box-shadow:var(--shadow);border-color:var(--border);}
 }
 
-/* ============================
-   VOTE: 星（強い色）＋点滅はJSで確実制御
-   ============================ */
+/* VOTE: 画像も少し華やかに */
 .post-inner.vote-stars .post-img-wrap img{
   filter:saturate(1.12) contrast(1.05) brightness(1.04);
-}
-.sparkStar{
-  position:absolute;
-  width:var(--s, 10px);
-  height:var(--s, 10px);
-  opacity:0;
-  transform:scale(.75) rotate(var(--r,0deg));
-  transform-origin:center;
-  will-change:opacity, transform, filter;
-  mix-blend-mode:normal;
-
-  /* 色はだいぶ強く */
-  filter:
-    drop-shadow(0 0 2px rgba(255,255,255,1))
-    drop-shadow(0 0 8px rgba(255,255,255,.95))
-    drop-shadow(0 0 18px rgba(255,255,255,.60))
-    drop-shadow(0 0 14px rgba(230,194,122,1))
-    drop-shadow(0 0 34px rgba(230,194,122,.85))
-    drop-shadow(0 0 58px rgba(230,194,122,.60));
-}
-.sparkStar svg{width:100%;height:100%;display:block;}
-.sparkStar.on{
-  opacity:1;
-  transform:scale(var(--k, 2.2)) rotate(var(--r,0deg));
 }
 
 /* ribbons/stamps */
@@ -357,7 +342,6 @@ body{
 
 form.inline{display:inline;margin:0;}
 
-/* reduce motion: 星の点滅は止めない（ここ重要） */
 @media (prefers-reduced-motion: reduce){
   .post-inner{transition:none !important;}
   .post-inner:hover{transform:none !important;}
@@ -535,102 +519,121 @@ document.addEventListener("DOMContentLoaded", function () {
     card.appendChild(s);
     setTimeout(()=>s.remove(), 1350);
   }
-  function rnd(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
-  function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
+  function rnd(min, max){ return min + Math.random() * (max - min); }
+  function rndi(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
 
-  function makeSparkStar(sizePx, rotDeg, warm){
-    const d = document.createElement("div");
-    d.className = "sparkStar";
-    d.style.setProperty("--s", sizePx + "px");
-    d.style.setProperty("--r", rotDeg + "deg");
-
-    const fill = warm ? "#E6C27A" : "#FFFFFF";
-    d.innerHTML = `
-      <svg viewBox="0 0 100 100" aria-hidden="true">
-        <polygon points="50,10 60,40 90,50 60,60 50,90 40,60 10,50 40,40"
-                 fill="${fill}" opacity="0.98"/>
-      </svg>
-    `;
-    return d;
+  // ===== Canvas Sparkle (高速・軽い) =====
+  function removeExistingCanvas(card){
+    const old = card.querySelector(".sparkle-canvas");
+    if (old) old.remove();
   }
 
-  // ★確実に「きらめく」：rAF + 寿命管理（設計を安定化）
-  function runSparkle(stars, durationMs){
-    const tickMs = 38;                 // ★周期を短く（キラキラ感）
-    const lifeMin = 55;                // ★光ってる寿命も短く
-    const lifeMax = 95;
+  function createSparkleCanvas(imgWrap){
+    const canvas = document.createElement("canvas");
+    canvas.className = "sparkle-canvas";
+    imgWrap.appendChild(canvas);
 
-    let endAt = performance.now() + durationMs;
-    let last = performance.now();
-    let acc = 0;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const rect = imgWrap.getBoundingClientRect();
+    const w = Math.max(1, Math.floor(rect.width));
+    const h = Math.max(1, Math.floor(rect.height));
+    canvas.width = Math.floor(w * dpr);
+    canvas.height = Math.floor(h * dpr);
+    const ctx = canvas.getContext("2d", { alpha: true, desynchronized: true });
 
-    // TTL管理
-    for (const s of stars) s.__ttl = 0;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { canvas, ctx, w, h };
+  }
+
+  function drawStar(ctx, x, y, r, rot, a, warm){
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(rot);
+
+    // 強い発光（白芯＋金）
+    ctx.globalAlpha = a;
+    ctx.globalCompositeOperation = "lighter";
+    ctx.shadowBlur = r * 3.2;
+    ctx.shadowColor = warm ? "rgba(230,194,122,1)" : "rgba(255,255,255,1)";
+
+    // 小さな8-point star
+    ctx.beginPath();
+    const spikes = 4; // 8点っぽく
+    const outer = r;
+    const inner = r * 0.45;
+    for (let i = 0; i < spikes * 2; i++){
+      const ang = (Math.PI / spikes) * i;
+      const rr = (i % 2 === 0) ? outer : inner;
+      ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
+    }
+    ctx.closePath();
+
+    // グラデ（白→金）
+    const g = ctx.createRadialGradient(0,0,0, 0,0,r*1.2);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(0.45, warm ? "rgba(230,194,122,0.95)" : "rgba(255,255,255,0.85)");
+    g.addColorStop(1, "rgba(230,194,122,0)");
+    ctx.fillStyle = g;
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function runSparkle(card){
+    const imgWrap = card.querySelector(".post-img-wrap");
+    if (!imgWrap) return;
+
+    removeExistingCanvas(card);
+    const { canvas, ctx, w, h } = createSparkleCanvas(imgWrap);
+
+    // ★高速きらめき設定（ここが要望の“短い感覚”）
+    const duration = 2600;          // 演出時間（長すぎると重い）
+    const count = 85;               // 星の数
+    const freqMin = 10;             // 点滅周波数（Hz）→速い
+    const freqMax = 18;
+    const start = performance.now();
+
+    const stars = new Array(count).fill(0).map(() => ({
+      x: rnd(0.03*w, 0.97*w),
+      y: rnd(0.03*h, 0.97*h),
+      r: rnd(3.0, 6.0),             // 小さめ
+      rot: rnd(-0.4, 0.4),
+      warm: Math.random() < 0.45,
+      f: rnd(freqMin, freqMax),
+      ph: rnd(0, Math.PI * 2),
+      // さらに“瞬く”感：パルス幅
+      sharp: rnd(3.0, 6.0)
+    }));
 
     function frame(now){
-      if (now >= endAt){
-        for (const s of stars){ s.__ttl = 0; s.classList.remove("on"); }
-        return;
-      }
+      const t = (now - start) / 1000;
+      const alive = (now - start) < duration;
 
-      const dt = now - last;
-      last = now;
-      acc += dt;
+      ctx.clearRect(0, 0, w, h);
 
-      while (acc >= tickMs){
-        acc -= tickMs;
+      // ほんの少し残光（真っ黒にすると硬い）
+      ctx.globalCompositeOperation = "source-over";
+      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fillRect(0, 0, w, h);
 
-        // 1) 全部減衰（確実に点滅が見えるように“消える瞬間”を作る）
-        for (const s of stars){
-          if (s.__ttl > 0){
-            s.__ttl -= tickMs;
-            if (s.__ttl <= 0) s.classList.remove("on");
-          }
-        }
-
-        // 2) このtickで新しく光る星を追加
-        const spawn = 14; // ★短い周期でも見える量
-        for (let i=0;i<spawn;i++){
-          const s = stars[rnd(0, stars.length - 1)];
-          const k = pick([1.6, 1.8, 2.0, 2.2, 2.4, 2.6]); // キラッ
-          s.style.setProperty("--k", String(k));
-          s.__ttl = rnd(lifeMin, lifeMax);
-          s.classList.add("on");
+      for (const s of stars){
+        // ★瞬き：sinを鋭くして“点滅”に寄せる
+        const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * s.f * t + s.ph);
+        const pulse = Math.pow(base, s.sharp); // 鋭いピーク＝キラッ
+        const a = Math.min(1, pulse * 1.35);   // 明るさ強め
+        if (a > 0.03){
+          drawStar(ctx, s.x, s.y, s.r * (1.0 + a*1.2), s.rot, a, s.warm);
         }
       }
 
-      requestAnimationFrame(frame);
+      if (alive){
+        requestAnimationFrame(frame);
+      } else {
+        canvas.remove();
+      }
     }
 
     requestAnimationFrame(frame);
-  }
-
-  function spawnStars(card){
-    const layer = card.querySelector(".star-layer");
-    if (!layer) return;
-    layer.innerHTML = "";
-
-    const starCount = 70;  // ★多すぎると“常時光ってる”に見えるので少し減らす
-    const pad = 4;
-    const stars = [];
-
-    for (let i=0;i<starCount;i++){
-      const s = rnd(6, 12);
-      const x = rnd(pad, 100 - pad);
-      const y = rnd(pad, 100 - pad);
-      const rot = rnd(-25, 25);
-      const warm = Math.random() < 0.45;
-
-      const el = makeSparkStar(s, rot, warm);
-      el.style.left = `calc(${x}% - ${s/2}px)`;
-      el.style.top  = `calc(${y}% - ${s/2}px)`;
-      layer.appendChild(el);
-      stars.push(el);
-    }
-
-    const dur = 8200;
-    runSparkle(stars, dur);
-    setTimeout(() => { layer.innerHTML = ""; }, dur + 300);
   }
 
   // Vote (AJAX)
@@ -650,13 +653,24 @@ document.addEventListener("DOMContentLoaded", function () {
           credentials: "same-origin"
         });
 
-        if (!res.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
+        if (!res.ok) {
+          if (btn) btn.classList.remove("btn-loading");
+          form.submit();
+          return;
+        }
 
         const data = await res.json();
-        if (!data || !data.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
+        if (!data || !data.ok) {
+          if (btn) btn.classList.remove("btn-loading");
+          form.submit();
+          return;
+        }
 
         const votesEl = document.getElementById(`votes-${data.post_id}`);
-        if (votesEl) { votesEl.textContent = `${data.votes} VOTES`; popCount(votesEl); }
+        if (votesEl) {
+          votesEl.textContent = `${data.votes} VOTES`;
+          popCount(votesEl);
+        }
 
         const wrap = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
         if (wrap) {
@@ -684,11 +698,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 8500);
-          spawnStars(card);
+          addOnce(card, "vote-stars", 1200);
+          runSparkle(card);                 // ★ここが軽くて速い
           addRibbon(card);
-          showToast("VOTED ✦", "FAST sparkle.");
+          showToast("VOTED ✦", "FAST sparkle (canvas).");
         } else {
+          // 既存Canvasが残らないように消す
+          const old = card.querySelector(".sparkle-canvas");
+          if (old) old.remove();
+
           addOnce(card, "unvote-purple", 1600);
           addStamp(card);
           showToast("UNVOTED", "Purple fade.");
