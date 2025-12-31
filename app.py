@@ -20,15 +20,12 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 # =========================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Renderでは DATA_DIR=/var/data を環境変数で渡す（Diskのmount pathと一致させる）
+# Renderで有料 + Disk を使うときだけ DATA_DIR=/var/data を設定する
 DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
 
 DB_PATH = os.path.join(DATA_DIR, "the_outfit.db")
 UPLOAD_FOLDER = os.path.join(DATA_DIR, "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# ローカルでプロジェクト直下に uploads/ を置いてる場合もあるので、あってもOK
-# （ただし実際に使うのは UPLOAD_FOLDER=DATA_DIR/uploads）
 
 
 # =========================
@@ -120,7 +117,6 @@ def init_db():
     conn.close()
 
 
-# gunicorn/Renderでも必ずDBが初期化される
 init_db()
 
 
@@ -156,7 +152,8 @@ def allowed_ext(filename: str) -> bool:
 
 def require_login():
     if "user" not in session:
-        return redirect(url_for("login"))
+        # 次に戻れるように next を付ける
+        return redirect(url_for("login", next=request.path))
     return None
 
 
@@ -188,7 +185,6 @@ def set_security_headers(resp):
     resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     resp.headers["Content-Security-Policy"] = CSP
 
-    # 本番HTTPSのときだけHSTS（HTTPに付けると事故る）
     if APP_ENV == "prod" and request.is_secure:
         resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     return resp
@@ -204,11 +200,41 @@ def too_many(_):
 # =========================
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
-    # 保存時にランダム名で secure_filename 済み
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
-@app.route("/", methods=["GET", "POST"])
+# ★ランキング公開：誰でも見れる
+@app.route("/", methods=["GET"])
+def home():
+    user = session.get("user")  # ログインしてない場合は None
+
+    conn = get_db()
+    cur = conn.cursor()
+
+    cur.execute("""
+        SELECT id, user, filename, votes
+        FROM posts
+        ORDER BY votes DESC, created_at DESC
+    """)
+    posts = cur.fetchall()
+
+    voted_ids = set()
+    if user:
+        cur.execute("SELECT post_id FROM votes WHERE user = ?", (user,))
+        voted_ids = {row["post_id"] for row in cur.fetchall()}
+
+    conn.close()
+
+    return render_template(
+        "home.html",
+        user=user,
+        posts=posts,
+        voted_ids=voted_ids,
+        is_logged_in=bool(user)
+    )
+
+
+@app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         rate_limit("login")
@@ -232,7 +258,12 @@ def login():
             session["user"] = name
             session.permanent = True
             session["csrf_token"] = secrets.token_urlsafe(32)  # ログイン時に再生成
-            return redirect(url_for("home"))
+
+            # next があればそこへ戻す（安全のため内部パスのみ想定）
+            nxt = request.args.get("next") or url_for("home")
+            if not nxt.startswith("/"):
+                nxt = url_for("home")
+            return redirect(nxt)
 
         flash("ユーザー名またはパスワードが違います。")
         return render_template("login.html")
@@ -280,31 +311,6 @@ def register():
     return render_template("register.html")
 
 
-@app.route("/home", methods=["GET"])
-def home():
-    r = require_login()
-    if r:
-        return r
-
-    user = session["user"]
-
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("""
-        SELECT id, user, filename, votes
-        FROM posts
-        ORDER BY votes DESC, created_at DESC
-    """)
-    posts = cur.fetchall()
-
-    cur.execute("SELECT post_id FROM votes WHERE user = ?", (user,))
-    voted_ids = {row["post_id"] for row in cur.fetchall()}
-
-    conn.close()
-    return render_template("home.html", user=user, posts=posts, voted_ids=voted_ids)
-
-
 @app.route("/upload", methods=["GET", "POST"])
 def upload():
     r = require_login()
@@ -342,6 +348,7 @@ def upload():
     return render_template("upload.html")
 
 
+# ★投票はログイン必須
 @app.route("/vote/<int:post_id>", methods=["POST"])
 def vote(post_id):
     r = require_login()
@@ -395,9 +402,8 @@ def unvote(post_id):
 def logout():
     csrf_validate()
     session.clear()
-    return redirect(url_for("login"))
+    return redirect(url_for("home"))
 
 
 if __name__ == "__main__":
-    # ローカル実行
     app.run(host="0.0.0.0", port=5000)

@@ -1,5 +1,5 @@
 the_outfit.db
 uploads/
+.env
 __pycache__/
 *.pyc
-.env

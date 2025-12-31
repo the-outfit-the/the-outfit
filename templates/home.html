@@ -11,7 +11,7 @@ body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#0
 .brand{display:flex;flex-direction:column;}
 .brand-mark{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--text-soft);}
 .brand-title{font-size:20px;letter-spacing:.22em;text-transform:uppercase;}
-.nav-right{font-size:11px;color:var(--text-soft);text-align:right;}
+.nav-right{font-size:11px;color:var(--text-soft);text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
 .nav-right a{color:var(--accent);text-decoration:none;margin-left:14px;border-bottom:1px solid transparent;padding-bottom:1px;}
 .nav-right a:hover{border-bottom-color:var(--accent);}
 .container{max-width:1120px;margin:22px auto 40px;padding:0 24px;}
@@ -26,7 +26,7 @@ body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#0
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
 .post-user{font-weight:500;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
-.actions{margin-top:8px;display:flex;gap:8px;align-items:center;}
+.actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
 .btn{
   display:inline-block;padding:5px 12px;border-radius:999px;
   font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
@@ -35,6 +35,7 @@ body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#0
 .btn-vote{background:transparent;color:var(--accent);}
 .btn-unvote{background:var(--accent);color:#050507;}
 .btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+.note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
 @media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}.post-img-wrap img{height:360px;}}
 .lookbook-overlay{position:fixed;inset:0;padding:24px;background:rgba(5,5,7,.96);display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:opacity .25s ease-out;z-index:999;}
@@ -55,14 +56,25 @@ form.inline{display:inline;margin:0;}
     <div class="brand-mark">THE OUTFIT</div>
     <div class="brand-title">LOOKBOOK</div>
   </div>
-  <div class="nav-right">
-    {{ user }}<br>
-    <a href="{{ url_for('upload') }}">UPLOAD</a>
 
-    <form class="inline" method="post" action="{{ url_for('logout') }}">
-      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-      <button class="btn btn-logout" type="submit">LOGOUT</button>
-    </form>
+  <div class="nav-right">
+    {% if is_logged_in %}
+      <div>{{ user }}</div>
+      <div>
+        <a href="{{ url_for('upload') }}">UPLOAD</a>
+
+        <form class="inline" method="post" action="{{ url_for('logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <button class="btn btn-logout" type="submit">LOGOUT</button>
+        </form>
+      </div>
+    {% else %}
+      <div>GUEST</div>
+      <div>
+        <a href="{{ url_for('login', next='/') }}">LOGIN</a>
+        <a href="{{ url_for('register') }}">REGISTER</a>
+      </div>
+    {% endif %}
   </div>
 </div>
 
@@ -71,6 +83,10 @@ form.inline{display:inline;margin:0;}
     <h2>RANKED LOOKS</h2>
     <div class="sub">CURATED BY VOTES · LIVE FEED</div>
   </div>
+
+  {% if not is_logged_in %}
+    <div class="note">投票・投稿は <a href="{{ url_for('login', next='/') }}" style="color:var(--accent);text-decoration:none;">ログイン</a> 後にできます。</div>
+  {% endif %}
 
   {% if posts %}
   <div class="posts">
@@ -93,16 +109,20 @@ form.inline{display:inline;margin:0;}
         </div>
 
         <div class="actions">
-          {% if p['id'] in voted_ids %}
-            <form class="inline" method="post" action="{{ url_for('unvote', post_id=p['id']) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
-            </form>
+          {% if is_logged_in %}
+            {% if p['id'] in voted_ids %}
+              <form class="inline" method="post" action="{{ url_for('unvote', post_id=p['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
+              </form>
+            {% else %}
+              <form class="inline" method="post" action="{{ url_for('vote', post_id=p['id']) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button class="btn btn-vote" type="submit">VOTE</button>
+              </form>
+            {% endif %}
           {% else %}
-            <form class="inline" method="post" action="{{ url_for('vote', post_id=p['id']) }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-              <button class="btn btn-vote" type="submit">VOTE</button>
-            </form>
+            <!-- 未ログインは投票UIを出さない（閲覧のみ） -->
           {% endif %}
         </div>
       </div>
