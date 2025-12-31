@@ -4,65 +4,264 @@
 <meta charset="UTF-8">
 <title>The Outfit - Lookbook</title>
 <style>
-:root{--bg:#050507;--card:#0b0c10;--border:rgba(255,255,255,.08);--text-main:#f5f5f4;--text-soft:#a1a1aa;--accent:#e6c27a;}
+:root{
+  --bg:#050507;
+  --card:#0b0c10;
+  --border:rgba(255,255,255,.08);
+  --text-main:#f5f5f4;
+  --text-soft:#a1a1aa;
+  --accent:#e6c27a;
+  --shadow: 0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02);
+  --ease: cubic-bezier(.2,.8,.2,1);
+}
 *{box-sizing:border-box;}
-body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#050507;color:var(--text-main);font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",system-ui,sans-serif;}
-.topbar{position:sticky;top:0;z-index:10;background:rgba(5,5,7,.96);backdrop-filter:blur(14px);border-bottom:1px solid rgba(255,255,255,.06);padding:12px 28px;display:flex;justify-content:space-between;align-items:center;}
+html,body{height:100%;}
+body{
+  margin:0;
+  background:radial-gradient(circle at top,#20202a 0,#050507 40%),#050507;
+  color:var(--text-main);
+  font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",system-ui,sans-serif;
+}
+
+.topbar{
+  position:sticky;top:0;z-index:10;
+  background:rgba(5,5,7,.96);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.06);
+  padding:12px 28px;
+  display:flex;justify-content:space-between;align-items:center;
+}
 .brand{display:flex;flex-direction:column;}
 .brand-mark{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--text-soft);}
 .brand-title{font-size:20px;letter-spacing:.22em;text-transform:uppercase;}
-.nav-right{font-size:11px;color:var(--text-soft);text-align:right;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
-.nav-right a{color:var(--accent);text-decoration:none;margin-left:14px;border-bottom:1px solid transparent;padding-bottom:1px;}
-.nav-right a:hover{border-bottom-color:var(--accent);}
+
+.nav-right{
+  font-size:11px;color:var(--text-soft);text-align:right;
+  display:flex;flex-direction:column;gap:8px;align-items:flex-end;
+}
+.nav-right a{
+  color:var(--accent);text-decoration:none;margin-left:14px;
+  border-bottom:1px solid transparent;padding-bottom:1px;
+  transition:border-color .2s var(--ease), opacity .2s var(--ease);
+}
+.nav-right a:hover{border-bottom-color:var(--accent);opacity:.9;}
+
 .container{max-width:1120px;margin:22px auto 40px;padding:0 24px;}
 .header-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;}
 .header-row h2{margin:0;font-size:16px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;}
 .header-row .sub{font-size:11px;color:var(--text-soft);}
+
 .posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;}
 .post{border-radius:22px;overflow:hidden;}
-.post-inner{background:var(--card);border-radius:22px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02);padding:10px;height:100%;display:flex;flex-direction:column;}
+.post-inner{
+  position:relative;
+  background:var(--card);
+  border-radius:22px;
+  border:1px solid var(--border);
+  box-shadow:var(--shadow);
+  padding:10px;
+  height:100%;
+  display:flex;flex-direction:column;
+  transform:translateZ(0);
+  transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
+}
 
-/* 枠を固定してゆがみ防止 */
+/* ハイブランドっぽい上品なホバー：少しだけ浮く＆光る */
+.post-inner:hover{
+  transform:translateY(-4px);
+  border-color:rgba(230,194,122,.22);
+  box-shadow: 0 40px 120px rgba(0,0,0,.92), 0 0 0 1px rgba(230,194,122,.08);
+}
+
+/* 上品な“光のスイープ” */
+.post-inner::before{
+  content:"";
+  position:absolute;inset:-1px;
+  border-radius:22px;
+  pointer-events:none;
+  background:linear-gradient(120deg, transparent 0%, rgba(230,194,122,.06) 20%, transparent 40%);
+  transform:translateX(-60%);
+  opacity:0;
+  transition:opacity .3s var(--ease);
+}
+.post-inner:hover::before{
+  opacity:1;
+  animation:sweep 1.2s var(--ease) 1;
+}
+@keyframes sweep{
+  0%{transform:translateX(-60%);}
+  100%{transform:translateX(60%);}
+}
+
+/* 枠を固定してゆがみ防止（リロード無しでも保険） */
 .post-img-wrap{
-  border-radius:18px;
-  overflow:hidden;
-  margin-bottom:10px;
+  border-radius:18px;overflow:hidden;margin-bottom:10px;
   aspect-ratio: 4 / 5;
   background:#050507;
+  transform:translateZ(0);
 }
 .post-img-wrap img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-  cursor:pointer;
+  width:100%;height:100%;object-fit:cover;display:block;cursor:pointer;
+  transform:scale(1);
+  transition:transform .6s var(--ease), filter .6s var(--ease);
+  will-change:transform;
+}
+/* 画像は“ちょいズーム”でラグジュアリー感（ゆがみ無し・枠固定） */
+.post-inner:hover .post-img-wrap img{
+  transform:scale(1.03);
+  filter:saturate(1.05) contrast(1.02);
 }
 
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
-.post-user{font-weight:500;}
+.post-user{font-weight:500;letter-spacing:.04em;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
-.actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
-.btn{
-  display:inline-block;padding:5px 12px;border-radius:999px;
-  font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
-  border:1px solid var(--accent);cursor:pointer;
+
+/* 票数“ポン” */
+.count-pop{
+  animation:countPop .34s var(--ease) 1;
 }
+@keyframes countPop{
+  0%{transform:translateY(2px);opacity:.65;}
+  60%{transform:translateY(-3px);opacity:1;}
+  100%{transform:translateY(0);opacity:1;}
+}
+
+.actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:6px 12px;border-radius:999px;
+  font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
+  border:1px solid var(--accent);
+  cursor:pointer;
+  transition:transform .18s var(--ease), filter .2s var(--ease), background .25s var(--ease), color .25s var(--ease), opacity .25s var(--ease);
+  position:relative;
+  user-select:none;
+}
+.btn:active{transform:translateY(1px) scale(.99);}
 .btn-vote{background:transparent;color:var(--accent);text-decoration:none;}
 .btn-unvote{background:var(--accent);color:#050507;text-decoration:none;}
 .btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
+
+/* ボタンに“高級感あるハイライト” */
+.btn::after{
+  content:"";
+  position:absolute;inset:0;
+  border-radius:999px;
+  background:linear-gradient(120deg, transparent 0%, rgba(255,255,255,.22) 18%, transparent 36%);
+  transform:translateX(-80%);
+  opacity:.0;
+  pointer-events:none;
+}
+.btn:hover::after{
+  opacity:.9;
+  animation:btnSweep 1.05s var(--ease) 1;
+}
+@keyframes btnSweep{
+  0%{transform:translateX(-80%);}
+  100%{transform:translateX(80%);}
+}
+
+/* 投票中：上品にフェード＋操作不可 */
+.btn-loading{
+  opacity:.65;
+  cursor:progress;
+  pointer-events:none;
+}
+
+/* 投票成功時：カードが一瞬だけ“発光＆浮く” */
+.vote-flash{
+  animation:voteFlash .55s var(--ease) 1;
+}
+@keyframes voteFlash{
+  0%{
+    transform:translateY(0);
+    box-shadow:var(--shadow);
+    border-color:rgba(230,194,122,.12);
+  }
+  45%{
+    transform:translateY(-6px);
+    box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.16), 0 0 40px rgba(230,194,122,.08);
+    border-color:rgba(230,194,122,.28);
+  }
+  100%{
+    transform:translateY(0);
+    box-shadow:var(--shadow);
+    border-color:var(--border);
+  }
+}
+
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
 @media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
 
-.lookbook-overlay{position:fixed;inset:0;padding:24px;background:rgba(5,5,7,.96);display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:opacity .25s ease-out;z-index:999;}
+/* ルックブック：より上品に */
+.lookbook-overlay{
+  position:fixed;inset:0;padding:24px;
+  background:rgba(5,5,7,.92);
+  backdrop-filter:blur(10px);
+  display:flex;justify-content:center;align-items:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .22s var(--ease);
+  z-index:999;
+}
 .lookbook-overlay.show{opacity:1;pointer-events:auto;}
-.lookbook-inner{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;}
-.lookbook-image-wrap{max-width:100%;max-height:calc(100vh - 140px);display:flex;justify-content:center;align-items:center;overflow:hidden;border-radius:20px;border:1px solid rgba(255,255,255,0.12);box-shadow:0 40px 100px rgba(0,0,0,0.9);background:#050507;}
-.lookbook-image-wrap img{display:block;max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain;margin:0 auto;}
+.lookbook-inner{
+  width:100%;height:100%;
+  display:flex;flex-direction:column;
+  justify-content:center;align-items:center;
+  gap:10px;
+  transform:scale(.985);
+  transition:transform .28s var(--ease);
+}
+.lookbook-overlay.show .lookbook-inner{transform:scale(1);}
+.lookbook-image-wrap{
+  max-width:100%;
+  max-height:calc(100vh - 140px);
+  display:flex;justify-content:center;align-items:center;
+  overflow:hidden;
+  border-radius:20px;
+  border:1px solid rgba(255,255,255,0.12);
+  box-shadow:0 45px 140px rgba(0,0,0,0.92);
+  background:#050507;
+}
+.lookbook-image-wrap img{
+  display:block;max-width:100%;max-height:100%;
+  width:auto;height:auto;object-fit:contain;margin:0 auto;
+}
 .lookbook-credit{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.12em;text-align:center;}
 .lookbook-hint{margin-top:2px;font-size:10px;color:var(--text-soft);text-align:center;}
 @media (max-width:768px){.lookbook-overlay{padding:16px;}.lookbook-image-wrap{max-height:calc(100vh - 120px);}}
+
+/* トースト（投票の気持ちよさ） */
+.toast{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  background:rgba(11,12,16,.88);
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  padding:10px 12px;
+  box-shadow:0 30px 80px rgba(0,0,0,.7);
+  backdrop-filter:blur(10px);
+  color:var(--text-main);
+  font-size:11px;
+  letter-spacing:.08em;
+  opacity:0;
+  transform:translateY(10px);
+  pointer-events:none;
+  transition:opacity .22s var(--ease), transform .22s var(--ease);
+  z-index:1000;
+}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast .small{display:block;color:var(--text-soft);font-size:10px;letter-spacing:.06em;margin-top:2px;}
+
 form.inline{display:inline;margin:0;}
+
+/* 動きが苦手な人向け */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important;}
+}
 </style>
 </head>
 <body>
@@ -78,7 +277,6 @@ form.inline{display:inline;margin:0;}
       <div>{{ user }}</div>
       <div>
         <a href="{{ url_for('upload') }}">UPLOAD</a>
-
         <form class="inline" method="post" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="btn btn-logout" type="submit">LOGOUT</button>
@@ -108,7 +306,7 @@ form.inline{display:inline;margin:0;}
   <div class="posts">
     {% for p in posts %}
     <div class="post" data-post-id="{{ p['id'] }}">
-      <div class="post-inner">
+      <div class="post-inner" id="card-{{ p['id'] }}">
         <div class="post-img-wrap">
           <img
             src="{{ url_for('uploaded_file', filename=p['filename']) }}"
@@ -171,9 +369,14 @@ form.inline{display:inline;margin:0;}
   </div>
 </div>
 
+<div class="toast" id="toast">
+  <span id="toastMain">UPDATED</span>
+  <span class="small" id="toastSub">Your lookbook is live.</span>
+</div>
+
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  // ルックブック表示
+  // ---------- Lookbook ----------
   const imgs = document.querySelectorAll(".look-img");
   const overlay = document.getElementById("lookbookOverlay");
   const overlayImg = document.getElementById("lookbookImage");
@@ -192,11 +395,45 @@ document.addEventListener("DOMContentLoaded", function () {
     overlay.classList.remove("show");
   });
 
-  // ★投票をリロード無しに（画像が歪まない）
+  // ---------- Toast ----------
+  const toast = document.getElementById("toast");
+  const toastMain = document.getElementById("toastMain");
+  const toastSub = document.getElementById("toastSub");
+  let toastTimer = null;
+
+  function showToast(main, sub) {
+    toastMain.textContent = main;
+    toastSub.textContent = sub;
+    toast.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 1500);
+  }
+
+  // ---------- Vote (AJAX) ----------
   const voteForms = document.querySelectorAll(".vote-form");
+
+  function popCount(el){
+    if (!el) return;
+    el.classList.remove("count-pop");
+    // reflow to restart animation
+    void el.offsetWidth;
+    el.classList.add("count-pop");
+  }
+
+  function flashCard(postId){
+    const card = document.getElementById(`card-${postId}`);
+    if (!card) return;
+    card.classList.remove("vote-flash");
+    void card.offsetWidth;
+    card.classList.add("vote-flash");
+  }
+
   voteForms.forEach((form) => {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      const btn = form.querySelector("button");
+      if (btn) btn.classList.add("btn-loading");
 
       try {
         const res = await fetch(form.action, {
@@ -210,35 +447,39 @@ document.addEventListener("DOMContentLoaded", function () {
         });
 
         if (!res.ok) {
-          // 何かあれば通常遷移にフォールバック
+          if (btn) btn.classList.remove("btn-loading");
           form.submit();
           return;
         }
 
         const data = await res.json();
         if (!data || !data.ok) {
+          if (btn) btn.classList.remove("btn-loading");
           form.submit();
           return;
         }
 
-        // 票数更新
+        // votes text
         const votesEl = document.getElementById(`votes-${data.post_id}`);
-        if (votesEl) votesEl.textContent = `${data.votes} VOTES`;
+        if (votesEl) {
+          votesEl.textContent = `${data.votes} VOTES`;
+          popCount(votesEl);
+        }
 
-        // 画像のdata-votesも更新（フルスクリーン表示に反映）
-        const card = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
-        if (card) {
-          const img = card.querySelector(".look-img");
+        // update img meta for lookbook overlay
+        const cardWrap = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
+        if (cardWrap) {
+          const img = cardWrap.querySelector(".look-img");
           if (img) img.setAttribute("data-votes", String(data.votes));
         }
 
-        // ボタン切り替え
+        // button toggle
         const voted = !!data.voted;
         form.dataset.voted = voted ? "1" : "0";
         form.action = voted ? form.dataset.unvoteUrl : form.dataset.voteUrl;
 
-        const btn = form.querySelector("button");
         if (btn) {
+          btn.classList.remove("btn-loading");
           if (voted) {
             btn.textContent = "REMOVE VOTE";
             btn.classList.remove("btn-vote");
@@ -249,8 +490,13 @@ document.addEventListener("DOMContentLoaded", function () {
             btn.classList.add("btn-vote");
           }
         }
+
+        // luxury motion
+        flashCard(data.post_id);
+        showToast(voted ? "VOTED" : "VOTE REMOVED", voted ? "Curated with taste." : "Back to neutral.");
+
       } catch (_) {
-        // 通常遷移にフォールバック
+        if (btn) btn.classList.remove("btn-loading");
         form.submit();
       }
     });
