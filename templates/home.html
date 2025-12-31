@@ -98,7 +98,7 @@ body{
   position:absolute;inset:0;
   pointer-events:none;
   opacity:0;
-  z-index:40;   /* 星より下 */
+  z-index:40;
 }
 
 /* stars layer */
@@ -174,7 +174,7 @@ body{
 }
 
 /* ============================
-   VOTE: だいぶ小さい + 光は強い（キラキラ）
+   VOTE: “点滅”をはっきりさせる（カク消え→カク出る）
    ============================ */
 .post-inner.vote-stars .post-img-wrap img{
   filter:saturate(1.10) contrast(1.03) brightness(1.03);
@@ -185,33 +185,35 @@ body{
   width:var(--s, 10px);
   height:var(--s, 10px);
   opacity:0;
-  transform:scale(.88) rotate(var(--r, 0deg));
+  transform:scale(.70) rotate(var(--r, 0deg));
   transform-origin:center;
   will-change:opacity, transform, filter;
-  mix-blend-mode:screen; /* 光を写真に“乗せる” */
+  mix-blend-mode:screen;
 
-  /* ★色（光）を強く：白の芯＋ゴールドの外側 */
   filter:
-    drop-shadow(0 0 2px rgba(255,255,255,.95))
-    drop-shadow(0 0 6px rgba(255,255,255,.55))
-    drop-shadow(0 0 10px rgba(230,194,122,.75))
-    drop-shadow(0 0 18px rgba(230,194,122,.40));
+    drop-shadow(0 0 2px rgba(255,255,255,.98))
+    drop-shadow(0 0 6px rgba(255,255,255,.65))
+    drop-shadow(0 0 12px rgba(230,194,122,.82))
+    drop-shadow(0 0 22px rgba(230,194,122,.48));
 
-  animation: sparkle var(--dur, 1200ms) ease-in-out var(--iter, 3);
+  /* ★ここが肝：stepで“点滅”っぽくする */
+  animation: sparkleBlink var(--dur, 720ms) steps(1,end) var(--iter, 10);
   animation-delay: var(--delay, 0ms);
   animation-fill-mode: both;
 }
 .sparkStar svg{width:100%;height:100%;display:block;}
 
-/* “本物の星”っぽい：キラッ→消える→キラッ→スッ… */
-@keyframes sparkle{
-  0%   {opacity:0;   transform:scale(.80) rotate(var(--r,0deg));}
-  10%  {opacity:.95; transform:scale(1.30) rotate(var(--r,0deg));}
-  22%  {opacity:.10; transform:scale(.95) rotate(var(--r,0deg));}
-  36%  {opacity:1.00;transform:scale(1.35) rotate(var(--r,0deg));}
-  52%  {opacity:.12; transform:scale(.96) rotate(var(--r,0deg));}
-  70%  {opacity:.82; transform:scale(1.18) rotate(var(--r,0deg));}
-  100% {opacity:0;   transform:scale(.86) rotate(var(--r,0deg));}
+/* 0/1が切り替わる感じで明滅させる */
+@keyframes sparkleBlink{
+  0%   {opacity:0;   transform:scale(.70) rotate(var(--r,0deg));}
+  12%  {opacity:1;   transform:scale(1.55) rotate(var(--r,0deg));}
+  18%  {opacity:0;   transform:scale(.85) rotate(var(--r,0deg));}
+  34%  {opacity:1;   transform:scale(1.65) rotate(var(--r,0deg));}
+  40%  {opacity:0;   transform:scale(.88) rotate(var(--r,0deg));}
+  58%  {opacity:1;   transform:scale(1.50) rotate(var(--r,0deg));}
+  66%  {opacity:0;   transform:scale(.86) rotate(var(--r,0deg));}
+  84%  {opacity:1;   transform:scale(1.40) rotate(var(--r,0deg));}
+  100% {opacity:0;   transform:scale(.80) rotate(var(--r,0deg));}
 }
 
 /* ribbons/stamps */
@@ -273,9 +275,7 @@ body{
   100%{opacity:0; transform:rotate(-10deg) translateY(-10px) scale(1.01);}
 }
 
-/* ============================
-   UNVOTE: 紫（じわっと沈む→戻る）
-   ============================ */
+/* UNVOTE purple */
 .post-inner.unvote-purple .post-img-wrap::after{
   background:
     radial-gradient(circle at 50% 50%, rgba(62,14,110,.52), rgba(16,4,38,.74)),
@@ -289,16 +289,8 @@ body{
   animation:purpleImg 1500ms ease-in-out 1;
   animation-fill-mode:both;
 }
-@keyframes purpleFade{
-  0%   {opacity:0;}
-  55%  {opacity:1;}
-  100% {opacity:0;}
-}
-@keyframes purpleImg{
-  0%   {filter:none;}
-  55%  {filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64);}
-  100% {filter:none;}
-}
+@keyframes purpleFade{0%{opacity:0;}55%{opacity:1;}100%{opacity:0;}}
+@keyframes purpleImg{0%{filter:none;}55%{filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64);}100%{filter:none;}}
 
 /* misc */
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
@@ -377,11 +369,10 @@ body{
 
 form.inline{display:inline;margin:0;}
 
-/* Reduce Motion: 動かないが“強い光の点”は出す */
 @media (prefers-reduced-motion: reduce){
   .post-inner{transition:none !important;}
   .post-inner:hover{transform:none !important;}
-  .sparkStar{animation:none !important; opacity:.40 !important; transform:scale(1) !important;}
+  .sparkStar{animation:none !important; opacity:.45 !important; transform:scale(1) !important;}
   .post-inner.unvote-purple .post-img-wrap::after{animation:none !important; opacity:1 !important;}
   .post-inner.unvote-purple .post-img-wrap img{animation:none !important; filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64) !important;}
 }
@@ -556,7 +547,6 @@ document.addEventListener("DOMContentLoaded", function () {
     card.appendChild(s);
     setTimeout(()=>s.remove(), 1350);
   }
-
   function rnd(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
 
   function makeSparkStar(sizePx, durMs, delayMs, iter, rotDeg, warm){
@@ -568,9 +558,8 @@ document.addEventListener("DOMContentLoaded", function () {
     d.style.setProperty("--iter", String(iter));
     d.style.setProperty("--r", rotDeg + "deg");
 
-    // 小さいほど“点”に寄せる：白の芯 + ほんのり金
     const fill = warm ? "#E6C27A" : "#FFFFFF";
-    const fillOpacity = warm ? "0.70" : "0.78";
+    const fillOpacity = warm ? "0.80" : "0.88";
 
     d.innerHTML = `
       <svg viewBox="0 0 100 100" aria-hidden="true">
@@ -589,14 +578,15 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!layer) return;
     layer.innerHTML = "";
 
-    // ★小さく・光は強く：密度はそこそこ
-    const starCount = 46;
+    // ★点滅感を出す：回数を増やし、周期を速くする
+    const starCount = 52;
     const pad = 6;
+
     for (let i=0;i<starCount;i++){
-      const s = rnd(6, 14);            // だいぶ小さく
-      const dur = rnd(900, 1500);      // キラキラ速め
-      const delay = rnd(0, 900);       // あちこちで点滅
-      const iter = rnd(3, 5);          // 何度も出たり消えたり
+      const s = rnd(6, 14);
+      const dur = rnd(520, 820);   // ★速い
+      const delay = rnd(0, 700);   // ★ズラす
+      const iter = rnd(10, 16);    // ★何度も点滅
       const x = rnd(pad, 100 - pad);
       const y = rnd(pad, 100 - pad);
       const rot = rnd(-20, 20);
@@ -608,8 +598,8 @@ document.addEventListener("DOMContentLoaded", function () {
       layer.appendChild(el);
     }
 
-    // 最長: delay 900 + dur 1500 * 5 ≒ 8400ms
-    setTimeout(() => { layer.innerHTML = ""; }, 8600);
+    // 最長: delay 700 + dur 820*16 ≒ 13820ms
+    setTimeout(() => { layer.innerHTML = ""; }, 14500);
   }
 
   // Vote (AJAX)
@@ -674,10 +664,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 8600);
-          spawnStars(card);             // ★小さく強い光でキラキラ
+          addOnce(card, "vote-stars", 14500);
+          spawnStars(card);
           addRibbon(card);
-          showToast("VOTED ✦", "Sparkling starlight.");
+          showToast("VOTED ✦", "Blinking sparkle.");
         } else {
           addOnce(card, "unvote-purple", 1600);
           addStamp(card);
