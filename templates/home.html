@@ -65,15 +65,11 @@ body{
   transform:translateZ(0);
   transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
 }
-
-/* hover */
 .post-inner:hover{
   transform:translateY(-4px);
   border-color:rgba(230,194,122,.22);
   box-shadow: 0 40px 120px rgba(0,0,0,.92), 0 0 0 1px rgba(230,194,122,.08);
 }
-
-/* subtle sweep */
 .post-inner::before{
   content:"";
   position:absolute;inset:-1px;
@@ -84,14 +80,9 @@ body{
   opacity:0;
   transition:opacity .3s var(--ease);
 }
-.post-inner:hover::before{
-  opacity:1;
-  animation:sweep 1.2s var(--ease) 1;
-}
-@keyframes sweep{
-  0%{transform:translateX(-60%);}
-  100%{transform:translateX(60%);}
-}
+.post-inner:hover{ }
+.post-inner:hover::before{opacity:1;animation:sweep 1.2s var(--ease) 1;}
+@keyframes sweep{0%{transform:translateX(-60%);}100%{transform:translateX(60%);}}
 
 /* image wrap */
 .post-img-wrap{
@@ -102,23 +93,27 @@ body{
   transform:translateZ(0);
 }
 
-/* overlay (unvote purple) */
+/* unvote purple overlay */
 .post-img-wrap::after{
   content:"";
   position:absolute;inset:0;
   pointer-events:none;
   opacity:0;
+  z-index:4;
 }
 
-/* star layer container */
+/* ★ star layer must be ABOVE image */
 .star-layer{
   position:absolute; inset:0;
   pointer-events:none;
   overflow:hidden;
+  z-index:3;
 }
 
 /* image itself */
 .post-img-wrap img{
+  position:relative;
+  z-index:1;
   width:100%;height:100%;
   object-fit:cover;
   display:block;
@@ -136,14 +131,8 @@ body{
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
 .post-user{font-weight:500;letter-spacing:.04em;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
-
-/* count pop */
 .count-pop{animation:countPop .34s var(--ease) 1;}
-@keyframes countPop{
-  0%{transform:translateY(2px);opacity:.65;}
-  60%{transform:translateY(-3px);opacity:1;}
-  100%{transform:translateY(0);opacity:1;}
-}
+@keyframes countPop{0%{transform:translateY(2px);opacity:.65;}60%{transform:translateY(-3px);opacity:1;}100%{transform:translateY(0);opacity:1;}}
 
 /* actions */
 .actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
@@ -161,7 +150,6 @@ body{
 .btn-vote{background:transparent;color:var(--accent);text-decoration:none;}
 .btn-unvote{background:var(--accent);color:#050507;text-decoration:none;}
 .btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
-
 .btn::after{
   content:"";
   position:absolute;inset:0;border-radius:999px;
@@ -172,30 +160,27 @@ body{
 }
 .btn:hover::after{opacity:.9;animation:btnSweep 1.05s var(--ease) 1;}
 @keyframes btnSweep{0%{transform:translateX(-80%);}100%{transform:translateX(80%);}}
-
 .btn-loading{opacity:.65;cursor:progress;pointer-events:none;}
 
 /* card flash */
 .vote-flash{animation:voteFlash .55s var(--ease) 1;}
 @keyframes voteFlash{
   0%{box-shadow:var(--shadow);border-color:rgba(230,194,122,.12);}
-  45%{box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.16), 0 0 52px rgba(230,194,122,.14);border-color:rgba(230,194,122,.44);}
+  45%{box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.18), 0 0 64px rgba(230,194,122,.18);border-color:rgba(230,194,122,.55);}
   100%{box-shadow:var(--shadow);border-color:var(--border);}
 }
 
 /* ============================
-   VOTE: Big star twinkles (no mesh)
+   VOTE: VERY visible big twinkling stars
    ============================ */
-
-/* a little global brighten while stars play (no bounce) */
 .post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.18) contrast(1.06) brightness(1.09);
+  filter:saturate(1.20) contrast(1.07) brightness(1.10);
 }
 
-/* star element (real star shape) */
+/* Real star shape */
 .star{
   position:absolute;
-  width:120px; height:120px;
+  width:260px; height:260px;   /* ★大きく */
   clip-path: polygon(
     50% 0%,
     62% 34%,
@@ -208,42 +193,76 @@ body{
     2% 38%,
     38% 34%
   );
+  mix-blend-mode:screen;
   background:
-    radial-gradient(circle at 30% 30%,
-      rgba(255,255,255,.98) 0%,
-      rgba(230,194,122,.95) 35%,
-      rgba(230,194,122,.20) 62%,
+    radial-gradient(circle at 35% 30%,
+      rgba(255,255,255,1) 0%,
+      rgba(255,255,255,1) 14%,
+      rgba(230,194,122,1) 40%,
+      rgba(230,194,122,.75) 58%,
       rgba(230,194,122,0) 78%
     );
   filter:
-    drop-shadow(0 0 14px rgba(230,194,122,.40))
-    drop-shadow(0 0 28px rgba(255,255,255,.14));
+    drop-shadow(0 0 18px rgba(255,255,255,.45))
+    drop-shadow(0 0 44px rgba(230,194,122,.50))
+    drop-shadow(0 0 78px rgba(230,194,122,.28));
   opacity:0;
-  transform:scale(.88) rotate(0deg);
+  transform:scale(.86) rotate(0deg);
   will-change:opacity, transform, filter;
-  animation:starTwinkle var(--dur, 980ms) ease-in-out 1;
+  animation:starTwinkle var(--dur, 1200ms) ease-in-out 1;
 }
 
-/* make it “appear/disappear” multiple times */
+/* flare lines (still “star”, not mesh) */
+.star::before,
+.star::after{
+  content:"";
+  position:absolute;
+  left:50%; top:50%;
+  width:340px; height:6px;
+  transform:translate(-50%,-50%) rotate(var(--r, 0deg));
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.95), transparent);
+  filter:blur(.2px);
+  opacity:.0;
+}
+.star::after{
+  width:340px; height:6px;
+  --r: 90deg;
+}
+.star::before{ --r: 0deg; }
+
+/* appear/disappear clearly (no “網”) */
 @keyframes starTwinkle{
-  0%   {opacity:0; transform:scale(.82) rotate(-6deg); filter:drop-shadow(0 0 10px rgba(230,194,122,.30)) drop-shadow(0 0 18px rgba(255,255,255,.10));}
-  12%  {opacity:1; transform:scale(1.02) rotate(0deg); }
-  26%  {opacity:.15; transform:scale(.92) rotate(4deg);}
-  40%  {opacity:1; transform:scale(1.06) rotate(0deg);}
-  56%  {opacity:.12; transform:scale(.90) rotate(-3deg);}
-  72%  {opacity:1; transform:scale(1.03) rotate(0deg);}
-  100% {opacity:0; transform:scale(.84) rotate(6deg);}
+  0%   {opacity:0; transform:scale(.80) rotate(-8deg);}
+  10%  {opacity:1; transform:scale(1.05) rotate(0deg);}
+  22%  {opacity:.12; transform:scale(.92) rotate(6deg);}
+  34%  {opacity:1; transform:scale(1.08) rotate(0deg);}
+  48%  {opacity:.12; transform:scale(.92) rotate(-5deg);}
+  62%  {opacity:1; transform:scale(1.06) rotate(0deg);}
+  100% {opacity:0; transform:scale(.82) rotate(8deg);}
+}
+.post-inner.vote-stars .star::before,
+.post-inner.vote-stars .star::after{
+  animation:flareBlink var(--dur, 1200ms) ease-in-out 1;
+}
+@keyframes flareBlink{
+  0%{opacity:0;}
+  12%{opacity:.95;}
+  22%{opacity:.0;}
+  36%{opacity:.85;}
+  50%{opacity:.0;}
+  64%{opacity:.75;}
+  100%{opacity:0;}
 }
 
-/* VOTED ribbon (kept) */
+/* VOTED ribbon */
 .ribbon{
   position:absolute;
   left:14px; top:14px;
   display:inline-flex; align-items:center; gap:8px;
   padding:8px 12px;
   border-radius:999px;
-  border:1px solid rgba(230,194,122,.40);
-  background:rgba(230,194,122,.18);
+  border:1px solid rgba(230,194,122,.45);
+  background:rgba(230,194,122,.20);
   color:rgba(245,245,244,.96);
   font-size:11px;
   letter-spacing:.22em;
@@ -254,11 +273,12 @@ body{
   opacity:0;
   pointer-events:none;
   animation:ribbonIn 1200ms var(--ease) 1;
+  z-index:5;
 }
 .ribbon .dot{
   width:8px;height:8px;border-radius:50%;
   background:var(--accent);
-  box-shadow:0 0 0 7px rgba(230,194,122,.20), 0 0 24px rgba(230,194,122,.22);
+  box-shadow:0 0 0 7px rgba(230,194,122,.22), 0 0 28px rgba(230,194,122,.26);
 }
 @keyframes ribbonIn{
   0%{opacity:0; transform:translateY(14px) scale(.98);}
@@ -268,30 +288,28 @@ body{
 }
 
 /* ============================
-   UNVOTE: slow purple sink (no bounce / no color rebound)
+   UNVOTE: much darker purple, slow in/out, no bounce
    ============================ */
 .post-inner.unvote-purple .post-img-wrap::after{
   background:
-    radial-gradient(closest-side at 50% 50%, rgba(140,90,200,.18), rgba(35,12,60,.72)),
-    radial-gradient(closest-side at 50% 50%, transparent 42%, rgba(0,0,0,.62) 100%),
-    linear-gradient(180deg, rgba(70,30,110,.10), rgba(0,0,0,.55));
+    radial-gradient(circle at 50% 50%, rgba(20,0,45,.72), rgba(6,0,18,.92)),
+    radial-gradient(circle at 50% 50%, transparent 38%, rgba(0,0,0,.80) 100%),
+    linear-gradient(180deg, rgba(35,0,70,.20), rgba(0,0,0,.72));
   mix-blend-mode:multiply;
-  animation:purpleFade 1400ms ease-in-out 1;
+  animation:purpleFade 1600ms ease-in-out 1;
 }
-
 .post-inner.unvote-purple .post-img-wrap img{
-  animation:purpleImg 1400ms ease-in-out 1;
+  animation:purpleImg 1600ms ease-in-out 1;
 }
 
 @keyframes purpleFade{
   0%   {opacity:0;}
-  55%  {opacity:1;}   /* じわっと沈む */
-  100% {opacity:0;}   /* じわっと戻る */
+  55%  {opacity:1;}  /* ★じわっと沈む */
+  100% {opacity:0;}  /* ★じわっと戻る */
 }
-
 @keyframes purpleImg{
   0%   {filter:none;}
-  55%  {filter:grayscale(.22) saturate(.55) contrast(.98) brightness(.72);}
+  55%  {filter:grayscale(.30) saturate(.40) contrast(.98) brightness(.55);}
   100% {filter:none;}
 }
 
@@ -313,6 +331,7 @@ body{
   opacity:0;
   pointer-events:none;
   animation:stampIn 1300ms ease-in-out 1;
+  z-index:6;
 }
 @keyframes stampIn{
   0%{opacity:0; transform:rotate(-10deg) translateY(18px) scale(.98);}
@@ -397,10 +416,7 @@ body{
 .toast .small{display:block;color:var(--text-soft);font-size:10px;letter-spacing:.06em;margin-top:2px;}
 
 form.inline{display:inline;margin:0;}
-
-@media (prefers-reduced-motion: reduce){
-  *{animation:none !important;transition:none !important;}
-}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important;}}
 </style>
 </head>
 <body>
@@ -576,39 +592,32 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
 
-  // BIG STARS: create real star elements (no mesh)
-  function spawnStars(card, count){
+  // ★ Spawn stars above image (very visible)
+  function spawnStars(card){
     const layer = card.querySelector(".star-layer");
     if (!layer) return;
-
-    // clear old stars just in case
     layer.innerHTML = "";
 
-    const presets = [
-      { x: 14, y: 18, size: 150, dur: 1050 },
-      { x: 76, y: 16, size: 130, dur: 980 },
-      { x: 30, y: 70, size: 170, dur: 1120 },
-      { x: 82, y: 72, size: 140, dur: 1000 },
-      { x: 55, y: 44, size: 190, dur: 1180 }
+    const stars = [
+      { x: 18, y: 20, size: 280, dur: 1300 },
+      { x: 78, y: 22, size: 240, dur: 1200 },
+      { x: 32, y: 74, size: 300, dur: 1400 },
+      { x: 82, y: 74, size: 250, dur: 1250 }
     ];
 
-    for (let i = 0; i < count; i++){
-      const p = presets[i % presets.length];
+    stars.forEach((p, i) => {
       const star = document.createElement("div");
       star.className = "star";
-      // position in % of container
       star.style.left = `calc(${p.x}% - ${p.size/2}px)`;
       star.style.top  = `calc(${p.y}% - ${p.size/2}px)`;
       star.style.width = `${p.size}px`;
       star.style.height = `${p.size}px`;
       star.style.setProperty("--dur", `${p.dur}ms`);
-      // small stagger so they "appear/disappear" not all same timing
-      star.style.animationDelay = `${i * 80}ms`;
+      star.style.animationDelay = `${i * 90}ms`;
       layer.appendChild(star);
-    }
+    });
 
-    // remove after animations end
-    setTimeout(() => { layer.innerHTML = ""; }, 1400);
+    setTimeout(() => { layer.innerHTML = ""; }, 1700);
   }
 
   // Vote (AJAX)
@@ -672,17 +681,16 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
 
-        // Effects
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 1400);
-          spawnStars(card, 5);       // ★大きい星：消えたり出たり（複数）
+          addOnce(card, "vote-stars", 1700);
+          spawnStars(card);          // ★巨大・明るい・点滅
           addRibbon(card);
-          showToast("VOTED ✦", "Big twinkles.");
+          showToast("VOTED ✦", "Big stars sparkle.");
         } else {
-          addOnce(card, "unvote-purple", 1400);  // ★じわっと紫に沈む→じわっと戻る
+          addOnce(card, "unvote-purple", 1700); // ★もっと暗い紫でじわっと
           addStamp(card);
-          showToast("UNVOTED", "Sank into purple.");
+          showToast("UNVOTED", "Deep purple fade.");
         }
 
       } catch (_) {
