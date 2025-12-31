@@ -174,51 +174,64 @@ body{
 }
 
 /* ============================
-   VOTE: 確実に見える星（アニメ無効でも表示される）
+   VOTE: きらめく星（小さめ複数・上品）
    ============================ */
 .post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.18) contrast(1.06) brightness(1.08);
+  filter:saturate(1.16) contrast(1.05) brightness(1.06);
 }
 
-/* ★ 重要：opacityを0にしない（アニメ無効でも見える） */
+/* ★星：小さめ＋明滅＋微スケールで“きらめき” */
 .starBurst{
   position:absolute;
-  width:680px;
-  height:680px;
-
-  /* アニメが無効でも必ず見える */
-  opacity:0.92;
-
-  transform:scale(.82) rotate(-10deg);
+  opacity:.0;                 /* 初期は消す（アニメが効く想定） */
+  transform:scale(.88) rotate(-6deg);
   transform-origin:center;
   will-change:opacity, transform, filter;
-  mix-blend-mode:normal; /* ブレンド依存を捨てる（確実に見せる） */
-
-  /* 強い光（確実に見える） */
+  mix-blend-mode:normal;      /* 確実表示 */
   filter:
-    drop-shadow(0 0 10px rgba(255,255,255,.85))
-    drop-shadow(0 0 26px rgba(255,255,255,.55))
-    drop-shadow(0 0 60px rgba(230,194,122,.65))
-    drop-shadow(0 0 120px rgba(230,194,122,.35));
-
-  animation:starBlink var(--dur, 1700ms) ease-in-out 1;
-  animation-fill-mode:both;
+    drop-shadow(0 0 6px rgba(255,255,255,.70))
+    drop-shadow(0 0 18px rgba(230,194,122,.55))
+    drop-shadow(0 0 36px rgba(230,194,122,.25));
+  animation:twinkle var(--dur, 1200ms) ease-in-out 1;
+  animation-delay: var(--delay, 0ms);
+  animation-fill-mode: both;
 }
 .starBurst svg{width:100%;height:100%;display:block;}
 
-/* 出たり消えたり（アニメ有効なら点滅） */
-@keyframes starBlink{
-  0%   {opacity:0;   transform:scale(.70) rotate(-12deg);}
-  12%  {opacity:0.95;transform:scale(1.02) rotate(0deg);}
-  26%  {opacity:0.15;transform:scale(.84) rotate(6deg);}
-  40%  {opacity:0.95;transform:scale(1.06) rotate(0deg);}
-  56%  {opacity:0.15;transform:scale(.84) rotate(-6deg);}
-  70%  {opacity:0.95;transform:scale(1.03) rotate(0deg);}
-  100% {opacity:0;   transform:scale(.74) rotate(10deg);}
+@keyframes twinkle{
+  0%   {opacity:0;   transform:scale(.82) rotate(-8deg);}
+  12%  {opacity:.95; transform:scale(1.02) rotate(0deg);}
+  22%  {opacity:.18; transform:scale(.92) rotate(4deg);}
+  36%  {opacity:.98; transform:scale(1.04) rotate(0deg);}
+  50%  {opacity:.18; transform:scale(.92) rotate(-3deg);}
+  66%  {opacity:.96; transform:scale(1.03) rotate(0deg);}
+  100% {opacity:0;   transform:scale(.86) rotate(6deg);}
+}
+
+/* さらに“キラッ”を足す小粒スター */
+.starDot{
+  position:absolute;
+  width:70px;height:70px;
+  opacity:0;
+  will-change:opacity, transform;
+  filter:
+    drop-shadow(0 0 10px rgba(255,255,255,.70))
+    drop-shadow(0 0 22px rgba(230,194,122,.45));
+  animation:dotTwinkle var(--dur, 900ms) ease-in-out 1;
+  animation-delay: var(--delay, 0ms);
+  animation-fill-mode: both;
+}
+.starDot svg{width:100%;height:100%;display:block;}
+@keyframes dotTwinkle{
+  0%{opacity:0; transform:scale(.70);}
+  18%{opacity:.95; transform:scale(1.05);}
+  40%{opacity:.05; transform:scale(.85);}
+  62%{opacity:.85; transform:scale(1.02);}
+  100%{opacity:0; transform:scale(.72);}
 }
 
 /* ============================
-   UNVOTE: もう少し暗い紫（前回より1段暗く）
+   UNVOTE: もう少し暗い紫（維持）
    ============================ */
 .post-inner.unvote-purple .post-img-wrap::after{
   background:
@@ -303,7 +316,6 @@ body{
   100%{opacity:0; transform:rotate(-10deg) translateY(-10px) scale(1.01);}
 }
 
-/* misc */
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
 @media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
@@ -380,13 +392,11 @@ body{
 
 form.inline{display:inline;margin:0;}
 
-/* ★ “全部アニメ無効”みたいなワイルドカードはやめる（星が消える原因） */
 @media (prefers-reduced-motion: reduce){
   .post-inner{transition:none !important;}
   .post-inner:hover{transform:none !important;}
-  /* 星は“動かないが見える” */
-  .starBurst{animation:none !important; opacity:0.92 !important; transform:scale(1) rotate(0deg) !important;}
-  /* 紫も“動かないが状態が出る” */
+  /* 動かないが“控えめに光る” */
+  .starBurst,.starDot{animation:none !important; opacity:.55 !important; transform:scale(1) rotate(0deg) !important;}
   .post-inner.unvote-purple .post-img-wrap::after{animation:none !important; opacity:1 !important;}
   .post-inner.unvote-purple .post-img-wrap img{animation:none !important; filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64) !important;}
 }
@@ -562,60 +572,90 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
 
-  // ★ “必ず見える”星（ベタ塗り+白縁+強グロー、opacity初期0にしない）
-  function makeStarBurst(size, durMs){
+  // ★ 星（メイン）: 小さめの“きらめき”
+  function makeStarBurst(size, durMs, delayMs){
     const d = document.createElement("div");
     d.className = "starBurst";
     d.style.width = size + "px";
     d.style.height = size + "px";
     d.style.setProperty("--dur", durMs + "ms");
+    d.style.setProperty("--delay", delayMs + "ms");
     d.innerHTML = `
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <polygon
           points="50,3 61,36 96,38 68,58 78,92 50,73 22,92 32,58 4,38 39,36"
           fill="#E6C27A"
-          opacity="0.95"
+          opacity="0.92"
           stroke="#FFFFFF"
           stroke-opacity="0.85"
-          stroke-width="2.2"
+          stroke-width="2.0"
         />
         <polygon
           points="50,12 58,38 86,40 64,56 72,82 50,67 28,82 36,56 14,40 42,38"
           fill="#FFFFFF"
-          opacity="0.22"
+          opacity="0.20"
         />
       </svg>
     `;
     return d;
   }
 
+  // ★ 星（小粒）: “キラッ”を追加
+  function makeStarDot(size, durMs, delayMs){
+    const d = document.createElement("div");
+    d.className = "starDot";
+    d.style.width = size + "px";
+    d.style.height = size + "px";
+    d.style.setProperty("--dur", durMs + "ms");
+    d.style.setProperty("--delay", delayMs + "ms");
+    d.innerHTML = `
+      <svg viewBox="0 0 100 100" aria-hidden="true">
+        <polygon
+          points="50,6 58,42 94,50 58,58 50,94 42,58 6,50 42,42"
+          fill="#FFFFFF"
+          opacity="0.85"
+        />
+      </svg>
+    `;
+    return d;
+  }
+
+  function rnd(min, max){ return Math.floor(min + Math.random() * (max - min + 1)); }
+
   function spawnStars(card){
     const layer = card.querySelector(".star-layer");
     if (!layer) return;
     layer.innerHTML = "";
 
-    // ★中央にド真ん中特大（これが見えないなら本当にJSが動いてない）
-    const big = makeStarBurst(760, 1800);
-    big.style.left = "calc(50% - 380px)";
-    big.style.top  = "calc(50% - 380px)";
-    layer.appendChild(big);
-
-    // 周辺（写真全体に散る）
-    const stars = [
-      { x: 18, y: 18, s: 520, d: 1650 },
-      { x: 82, y: 20, s: 460, d: 1600 },
-      { x: 22, y: 82, s: 560, d: 1750 },
-      { x: 86, y: 78, s: 480, d: 1650 }
-    ];
-    stars.forEach((p) => {
-      const el = makeStarBurst(p.s, p.d);
-      el.style.left = `calc(${p.x}% - ${p.s/2}px)`;
-      el.style.top  = `calc(${p.y}% - ${p.s/2}px)`;
+    // “デカすぎ”を廃止：メイン星は小さめを複数（120〜220）
+    const mainCount = 8;
+    for (let i=0;i<mainCount;i++){
+      const s = rnd(120, 220);
+      const dur = rnd(1100, 1600);
+      const delay = rnd(0, 280);
+      const x = rnd(12, 88);
+      const y = rnd(14, 86);
+      const el = makeStarBurst(s, dur, delay);
+      el.style.left = `calc(${x}% - ${s/2}px)`;
+      el.style.top  = `calc(${y}% - ${s/2}px)`;
       layer.appendChild(el);
-    });
+    }
 
-    // 後片付け（表示時間は長め）
-    setTimeout(() => { layer.innerHTML = ""; }, 2200);
+    // 小粒の“キラッ”を追加（40〜70）
+    const dotCount = 10;
+    for (let i=0;i<dotCount;i++){
+      const s = rnd(40, 70);
+      const dur = rnd(700, 1100);
+      const delay = rnd(0, 520);
+      const x = rnd(8, 92);
+      const y = rnd(10, 90);
+      const el = makeStarDot(s, dur, delay);
+      el.style.left = `calc(${x}% - ${s/2}px)`;
+      el.style.top  = `calc(${y}% - ${s/2}px)`;
+      layer.appendChild(el);
+    }
+
+    setTimeout(() => { layer.innerHTML = ""; }, 2100);
   }
 
   // Vote (AJAX)
@@ -680,12 +720,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
         if (voted) {
           addOnce(card, "vote-flash", 650);
-          addOnce(card, "vote-stars", 2300);
-          spawnStars(card);          // ★ここで星が“必ず”出る
+          addOnce(card, "vote-stars", 2200);
+          spawnStars(card);          // ★上品なきらめき
           addRibbon(card);
-          showToast("VOTED ✦", "Stars sparkle.");
+          showToast("VOTED ✦", "Twinkling stars.");
         } else {
-          addOnce(card, "unvote-purple", 1600); // ★紫は少し暗く
+          addOnce(card, "unvote-purple", 1600);
           addStamp(card);
           showToast("UNVOTED", "Purple fade.");
         }
