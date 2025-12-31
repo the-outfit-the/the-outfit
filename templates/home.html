@@ -65,15 +65,11 @@ body{
   transform:translateZ(0);
   transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease), filter .35s var(--ease);
 }
-
-/* 上品ホバー */
 .post-inner:hover{
   transform:translateY(-4px);
   border-color:rgba(230,194,122,.22);
   box-shadow: 0 40px 120px rgba(0,0,0,.92), 0 0 0 1px rgba(230,194,122,.08);
 }
-
-/* 光のスイープ */
 .post-inner::before{
   content:"";
   position:absolute;inset:-1px;
@@ -84,16 +80,10 @@ body{
   opacity:0;
   transition:opacity .3s var(--ease);
 }
-.post-inner:hover::before{
-  opacity:1;
-  animation:sweep 1.2s var(--ease) 1;
-}
-@keyframes sweep{
-  0%{transform:translateX(-60%);}
-  100%{transform:translateX(60%);}
-}
+.post-inner:hover::before{opacity:1;animation:sweep 1.2s var(--ease) 1;}
+@keyframes sweep{0%{transform:translateX(-60%);}100%{transform:translateX(60%);}}
 
-/* 枠固定 */
+/* Image wrap */
 .post-img-wrap{
   position:relative;
   border-radius:18px;overflow:hidden;margin-bottom:10px;
@@ -102,14 +92,13 @@ body{
   transform:translateZ(0);
 }
 
-/* ★写真の上に演出用レイヤー：通常は透明 */
+/* 写真の上に演出レイヤー */
 .post-img-wrap::before,
 .post-img-wrap::after{
   content:"";
-  position:absolute;inset:-20%;
+  position:absolute;inset:-25%;
   pointer-events:none;
   opacity:0;
-  transition:opacity .2s var(--ease);
 }
 
 /* 画像本体 */
@@ -130,17 +119,10 @@ body{
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
 .post-user{font-weight:500;letter-spacing:.04em;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
-
-/* 票数ポン */
 .count-pop{animation:countPop .34s var(--ease) 1;}
-@keyframes countPop{
-  0%{transform:translateY(2px);opacity:.65;}
-  60%{transform:translateY(-3px);opacity:1;}
-  100%{transform:translateY(0);opacity:1;}
-}
+@keyframes countPop{0%{transform:translateY(2px);opacity:.65;}60%{transform:translateY(-3px);opacity:1;}100%{transform:translateY(0);opacity:1;}}
 
 .actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
-
 .btn{
   display:inline-flex;align-items:center;justify-content:center;
   padding:6px 12px;border-radius:999px;
@@ -155,7 +137,6 @@ body{
 .btn-vote{background:transparent;color:var(--accent);text-decoration:none;}
 .btn-unvote{background:var(--accent);color:#050507;text-decoration:none;}
 .btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
-
 .btn::after{
   content:"";
   position:absolute;inset:0;border-radius:999px;
@@ -164,110 +145,176 @@ body{
   opacity:0;
   pointer-events:none;
 }
-.btn:hover::after{
-  opacity:.9;
-  animation:btnSweep 1.05s var(--ease) 1;
-}
-@keyframes btnSweep{
-  0%{transform:translateX(-80%);}
-  100%{transform:translateX(80%);}
-}
-
+.btn:hover::after{opacity:.9;animation:btnSweep 1.05s var(--ease) 1;}
+@keyframes btnSweep{0%{transform:translateX(-80%);}100%{transform:translateX(80%);}}
 .btn-loading{opacity:.65;cursor:progress;pointer-events:none;}
 
-/* 投票成功：カードが一瞬“発光＆浮く” */
+/* Card flash */
 .vote-flash{animation:voteFlash .55s var(--ease) 1;}
 @keyframes voteFlash{
   0%{transform:translateY(0);box-shadow:var(--shadow);border-color:rgba(230,194,122,.12);}
-  45%{transform:translateY(-6px);box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.16), 0 0 40px rgba(230,194,122,.08);border-color:rgba(230,194,122,.28);}
+  45%{transform:translateY(-6px);box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.16), 0 0 46px rgba(230,194,122,.12);border-color:rgba(230,194,122,.40);}
   100%{transform:translateY(0);box-shadow:var(--shadow);border-color:var(--border);}
 }
 
 /* ============================
-   ★VOTE：写真全体がふわっと光る
+   VOTE: 大きい星が写真全体にきらめく
    ============================ */
-.post-inner.vote-glow .post-img-wrap::before{
+/* ベース：ゴールドのふわっと光 */
+.post-inner.vote-stars .post-img-wrap::before{
   opacity:1;
   mix-blend-mode:screen;
   background:
-    radial-gradient(closest-side at 50% 40%, rgba(230,194,122,.35), transparent 70%),
-    linear-gradient(120deg, transparent 0%, rgba(255,255,255,.16) 18%, transparent 40%);
-  filter:blur(.2px);
-  animation:voteGlow 820ms var(--ease) 1;
+    radial-gradient(circle at 50% 45%, rgba(230,194,122,.55), transparent 62%),
+    radial-gradient(circle at 18% 20%, rgba(255,255,255,.20), transparent 55%),
+    radial-gradient(circle at 85% 25%, rgba(255,255,255,.16), transparent 60%);
+  animation:baseGlow 900ms var(--ease) 1;
 }
-.post-inner.vote-glow .post-img-wrap img{
-  filter:saturate(1.12) contrast(1.04) brightness(1.07);
-}
-@keyframes voteGlow{
-  0%{transform:translateY(12px) scale(.98); opacity:0;}
-  28%{opacity:1;}
-  100%{transform:translateY(-10px) scale(1.02); opacity:0;}
+@keyframes baseGlow{
+  0%{opacity:0; transform:translateY(12px) scale(.99);}
+  22%{opacity:1;}
+  100%{opacity:0; transform:translateY(-10px) scale(1.02);}
 }
 
-/* ============================
-   ★UNVOTE：わかりやすく寂しい演出
-   暗転 + 彩度落ち + 沈む + “VOID”スタンプ
-   ============================ */
-.post-inner.unvote-sad{
-  animation:unvoteDrop 620ms var(--ease) 1;
-}
-@keyframes unvoteDrop{
-  0%{transform:translateY(0);}
-  35%{transform:translateY(8px);}
-  100%{transform:translateY(0);}
-}
-
-/* 画像自体を“寂しく” */
-.post-inner.unvote-sad .post-img-wrap img{
-  filter:grayscale(.25) saturate(.55) contrast(.98) brightness(.84);
-  transform:scale(.995);
-}
-
-/* 暗いビネット＋うっすら粒感（上品に） */
-.post-inner.unvote-sad .post-img-wrap::after{
+/* 星たち：大きめの“きらめき”を複数箇所に */
+.post-inner.vote-stars .post-img-wrap::after{
   opacity:1;
+  mix-blend-mode:screen;
   background:
-    radial-gradient(closest-side at 50% 50%, transparent 40%, rgba(0,0,0,.55) 100%),
-    linear-gradient(180deg, rgba(0,0,0,.22), rgba(0,0,0,.40));
-  animation:unvoteVignette 760ms var(--ease) 1;
-}
-@keyframes unvoteVignette{
-  0%{transform:scale(1.04); opacity:0;}
-  30%{opacity:1;}
-  100%{transform:scale(1); opacity:0;}
+    radial-gradient(circle, rgba(255,255,255,.95) 0 2px, transparent 3px) 18% 22% / 220px 220px,
+    radial-gradient(circle, rgba(230,194,122,.95) 0 2px, transparent 3px) 78% 18% / 260px 260px,
+    radial-gradient(circle, rgba(255,255,255,.85) 0 2px, transparent 3px) 30% 70% / 280px 280px,
+    radial-gradient(circle, rgba(230,194,122,.85) 0 2px, transparent 3px) 82% 72% / 240px 240px,
+    radial-gradient(circle, rgba(255,255,255,.70) 0 2px, transparent 3px) 55% 45% / 320px 320px,
+    /* ここから “星っぽい十字” を作る（縦横の光） */
+    linear-gradient(90deg, transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%) 18% 22% / 120px 2px,
+    linear-gradient(0deg,  transparent 0%, rgba(255,255,255,.55) 50%, transparent 100%) 18% 22% / 2px 120px,
+
+    linear-gradient(90deg, transparent 0%, rgba(230,194,122,.55) 50%, transparent 100%) 78% 18% / 140px 2px,
+    linear-gradient(0deg,  transparent 0%, rgba(230,194,122,.55) 50%, transparent 100%) 78% 18% / 2px 140px,
+
+    linear-gradient(90deg, transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%) 30% 70% / 150px 2px,
+    linear-gradient(0deg,  transparent 0%, rgba(255,255,255,.45) 50%, transparent 100%) 30% 70% / 2px 150px,
+
+    linear-gradient(90deg, transparent 0%, rgba(230,194,122,.45) 50%, transparent 100%) 82% 72% / 130px 2px,
+    linear-gradient(0deg,  transparent 0%, rgba(230,194,122,.45) 50%, transparent 100%) 82% 72% / 2px 130px,
+
+    linear-gradient(90deg, transparent 0%, rgba(255,255,255,.35) 50%, transparent 100%) 55% 45% / 170px 2px,
+    linear-gradient(0deg,  transparent 0%, rgba(255,255,255,.35) 50%, transparent 100%) 55% 45% / 2px 170px;
+  background-repeat:no-repeat;
+  filter:blur(.15px);
+  animation:starsTwinkle 1050ms var(--ease) 1;
 }
 
-/* “VOID”スタンプ（短時間） */
-.unvote-stamp{
+@keyframes starsTwinkle{
+  0%{opacity:0; transform:translateY(12px) scale(.98);}
+  18%{opacity:1;}
+  55%{opacity:1; transform:translateY(-6px) scale(1.01);}
+  100%{opacity:0; transform:translateY(-14px) scale(1.02);}
+}
+
+.post-inner.vote-stars .post-img-wrap img{
+  filter:saturate(1.20) contrast(1.06) brightness(1.10);
+}
+
+/* VOTEDリボン */
+.ribbon{
   position:absolute;
-  top:16px; right:16px;
-  padding:6px 10px;
+  left:14px; top:14px;
+  display:inline-flex; align-items:center; gap:8px;
+  padding:8px 12px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(5,5,7,.45);
-  color:rgba(245,245,244,.82);
-  font-size:10px;
+  border:1px solid rgba(230,194,122,.40);
+  background:rgba(230,194,122,.18);
+  color:rgba(245,245,244,.96);
+  font-size:11px;
   letter-spacing:.22em;
   text-transform:uppercase;
   backdrop-filter:blur(10px);
-  transform:rotate(-7deg) translateY(6px);
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+  transform:translateY(10px) scale(.98);
   opacity:0;
   pointer-events:none;
-  animation:stamp 980ms var(--ease) 1;
+  animation:ribbonIn 1200ms var(--ease) 1;
 }
-@keyframes stamp{
-  0%{opacity:0; transform:rotate(-7deg) translateY(10px) scale(.98);}
-  18%{opacity:1;}
-  70%{opacity:1;}
-  100%{opacity:0; transform:rotate(-7deg) translateY(0) scale(1);}
+.ribbon .dot{
+  width:8px;height:8px;border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 0 7px rgba(230,194,122,.20), 0 0 24px rgba(230,194,122,.22);
+}
+@keyframes ribbonIn{
+  0%{opacity:0; transform:translateY(14px) scale(.98);}
+  18%{opacity:1; transform:translateY(0) scale(1);}
+  78%{opacity:1;}
+  100%{opacity:0; transform:translateY(-8px) scale(1.01);}
 }
 
-/* ゲスト案内 */
+/* ============================
+   UNVOTE: 暗い紫に沈む（わかりやすく）
+   ============================ */
+.post-inner.unvote-purple{
+  animation:purpleDrop 850ms var(--ease) 1;
+}
+@keyframes purpleDrop{
+  0%{transform:translateY(0);}
+  30%{transform:translateY(12px);}
+  100%{transform:translateY(0);}
+}
+
+/* 紫の“沈み”フィルタ */
+.post-inner.unvote-purple .post-img-wrap img{
+  filter:grayscale(.25) saturate(.55) contrast(.98) brightness(.72);
+}
+
+/* 紫のベール＋暗転ビネット */
+.post-inner.unvote-purple .post-img-wrap::after{
+  opacity:1;
+  background:
+    radial-gradient(closest-side at 50% 50%, rgba(98,54,140,.20), rgba(38,18,58,.66)),
+    radial-gradient(closest-side at 50% 50%, transparent 42%, rgba(0,0,0,.68) 100%),
+    linear-gradient(180deg, rgba(58,26,92,.10), rgba(0,0,0,.55));
+  mix-blend-mode:multiply;
+  animation:purpleSink 1100ms var(--ease) 1;
+}
+@keyframes purpleSink{
+  0%{opacity:0; transform:scale(1.03) translateY(-10px);}
+  25%{opacity:1;}
+  75%{opacity:1;}
+  100%{opacity:0; transform:scale(1.0) translateY(12px);}
+}
+
+/* UNVOTEDスタンプ */
+.stamp{
+  position:absolute;
+  right:14px; top:14px;
+  padding:10px 14px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(5,5,7,.52);
+  color:rgba(245,245,244,.92);
+  font-size:12px;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  backdrop-filter:blur(10px);
+  box-shadow:0 18px 60px rgba(0,0,0,.60);
+  transform:rotate(-10deg) translateY(12px) scale(.98);
+  opacity:0;
+  pointer-events:none;
+  animation:stampIn 1300ms var(--ease) 1;
+}
+@keyframes stampIn{
+  0%{opacity:0; transform:rotate(-10deg) translateY(18px) scale(.98);}
+  18%{opacity:1; transform:rotate(-10deg) translateY(0) scale(1);}
+  80%{opacity:1;}
+  100%{opacity:0; transform:rotate(-10deg) translateY(-10px) scale(1.01);}
+}
+
+/* Note, empty */
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
 @media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
 
-/* ルックブック */
+/* Lookbook */
 .lookbook-overlay{
   position:fixed;inset:0;padding:24px;
   background:rgba(5,5,7,.92);
@@ -314,7 +361,7 @@ body{
   .lookbook-image-wrap img{max-height:calc(100vh - 140px);}
 }
 
-/* トースト */
+/* Toast */
 .toast{
   position:fixed;
   right:18px;
@@ -410,8 +457,7 @@ form.inline{display:inline;margin:0;}
                     method="post"
                     action="{{ url_for('unvote', post_id=p['id']) }}"
                     data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
-                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}"
-                    data-voted="1">
+                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
               </form>
@@ -420,8 +466,7 @@ form.inline{display:inline;margin:0;}
                     method="post"
                     action="{{ url_for('vote', post_id=p['id']) }}"
                     data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
-                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}"
-                    data-voted="0">
+                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-vote" type="submit">VOTE</button>
               </form>
@@ -456,7 +501,7 @@ form.inline{display:inline;margin:0;}
 
 <script>
 document.addEventListener("DOMContentLoaded", function () {
-  // ---------- Lookbook ----------
+  // Lookbook
   const imgs = document.querySelectorAll(".look-img");
   const overlay = document.getElementById("lookbookOverlay");
   const overlayImg = document.getElementById("lookbookImage");
@@ -475,7 +520,7 @@ document.addEventListener("DOMContentLoaded", function () {
     overlay.classList.remove("show");
   });
 
-  // ---------- Toast ----------
+  // Toast
   const toast = document.getElementById("toast");
   const toastMain = document.getElementById("toastMain");
   const toastSub = document.getElementById("toastSub");
@@ -489,49 +534,36 @@ document.addEventListener("DOMContentLoaded", function () {
     toastTimer = setTimeout(() => toast.classList.remove("show"), 1650);
   }
 
-  // ---------- Helpers ----------
+  // Helpers
   function popCount(el){
     if (!el) return;
     el.classList.remove("count-pop");
     void el.offsetWidth;
     el.classList.add("count-pop");
   }
-
-  function flashCard(postId){
-    const card = document.getElementById(`card-${postId}`);
-    if (!card) return;
-    card.classList.remove("vote-flash");
-    void card.offsetWidth;
-    card.classList.add("vote-flash");
+  function addOnce(el, cls, ms){
+    if (!el) return;
+    el.classList.remove(cls);
+    void el.offsetWidth;
+    el.classList.add(cls);
+    setTimeout(()=>el.classList.remove(cls), ms);
+  }
+  function addRibbon(card){
+    const r = document.createElement("div");
+    r.className = "ribbon";
+    r.innerHTML = '<span class="dot"></span>VOTED';
+    card.appendChild(r);
+    setTimeout(()=>r.remove(), 1250);
+  }
+  function addStamp(card){
+    const s = document.createElement("div");
+    s.className = "stamp";
+    s.textContent = "UNVOTED";
+    card.appendChild(s);
+    setTimeout(()=>s.remove(), 1350);
   }
 
-  function voteGlow(postId){
-    const card = document.getElementById(`card-${postId}`);
-    if (!card) return;
-    card.classList.remove("vote-glow");
-    void card.offsetWidth;
-    card.classList.add("vote-glow");
-    setTimeout(() => card.classList.remove("vote-glow"), 900);
-  }
-
-  function unvoteSad(postId){
-    const card = document.getElementById(`card-${postId}`);
-    if (!card) return;
-
-    // VOIDスタンプを一瞬だけ出す
-    const stamp = document.createElement("div");
-    stamp.className = "unvote-stamp";
-    stamp.textContent = "VOID";
-    card.appendChild(stamp);
-    setTimeout(() => stamp.remove(), 1050);
-
-    card.classList.remove("unvote-sad");
-    void card.offsetWidth;
-    card.classList.add("unvote-sad");
-    setTimeout(() => card.classList.remove("unvote-sad"), 900);
-  }
-
-  // ---------- Vote (AJAX) ----------
+  // Vote (AJAX)
   const voteForms = document.querySelectorAll(".vote-form");
 
   voteForms.forEach((form) => {
@@ -562,21 +594,20 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
-        // votes text
         const votesEl = document.getElementById(`votes-${data.post_id}`);
         if (votesEl) {
           votesEl.textContent = `${data.votes} VOTES`;
           popCount(votesEl);
         }
 
-        // update img meta for overlay
         const wrap = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
         if (wrap) {
           const img = wrap.querySelector(".look-img");
           if (img) img.setAttribute("data-votes", String(data.votes));
         }
 
-        // toggle button
+        const card = document.getElementById(`card-${data.post_id}`);
+
         const voted = !!data.voted;
         form.action = voted ? form.dataset.unvoteUrl : form.dataset.voteUrl;
 
@@ -593,14 +624,16 @@ document.addEventListener("DOMContentLoaded", function () {
           }
         }
 
-        // motion
+        // Effects
         if (voted) {
-          flashCard(data.post_id);
-          voteGlow(data.post_id);              // ★写真全体が光る
-          showToast("VOTED ✦", "A quiet brilliance.");
+          addOnce(card, "vote-flash", 650);
+          addOnce(card, "vote-stars", 1200);     // ★大きい星
+          addRibbon(card);
+          showToast("VOTED ✦", "Stars on your look.");
         } else {
-          unvoteSad(data.post_id);             // ★はっきり寂しい
-          showToast("REMOVED", "A little lonely.");
+          addOnce(card, "unvote-purple", 1300);  // ★暗い紫に沈む
+          addStamp(card);
+          showToast("UNVOTED", "Faded into purple.");
         }
 
       } catch (_) {
