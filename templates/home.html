@@ -21,8 +21,23 @@ body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#0
 .posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;}
 .post{border-radius:22px;overflow:hidden;}
 .post-inner{background:var(--card);border-radius:22px;border:1px solid var(--border);box-shadow:0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02);padding:10px;height:100%;display:flex;flex-direction:column;}
-.post-img-wrap{border-radius:18px;overflow:hidden;margin-bottom:10px;}
-.post-img-wrap img{width:100%;height:420px;object-fit:cover;display:block;cursor:pointer;}
+
+/* ★リロード時の“一瞬ゆがむ”対策：枠サイズを先に確定させる */
+.post-img-wrap{
+  border-radius:18px;
+  overflow:hidden;
+  margin-bottom:10px;
+  aspect-ratio: 4 / 5; /* ここを好みで 3/4 や 1/1 に変えてOK */
+  background:#050507;
+}
+.post-img-wrap img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  display:block;
+  cursor:pointer;
+}
+
 .post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
 .post-user{font-weight:500;}
 .post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
@@ -32,12 +47,13 @@ body{margin:0;background:radial-gradient(circle at top,#20202a 0,#050507 40%),#0
   font-size:10px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;
   border:1px solid var(--accent);cursor:pointer;
 }
-.btn-vote{background:transparent;color:var(--accent);}
-.btn-unvote{background:var(--accent);color:#050507;}
+.btn-vote{background:transparent;color:var(--accent);text-decoration:none;}
+.btn-unvote{background:var(--accent);color:#050507;text-decoration:none;}
 .btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
 .note{margin-top:10px;color:var(--text-soft);font-size:11px;}
 .empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
-@media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}.post-img-wrap img{height:360px;}}
+@media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
+
 .lookbook-overlay{position:fixed;inset:0;padding:24px;background:rgba(5,5,7,.96);display:flex;justify-content:center;align-items:center;opacity:0;pointer-events:none;transition:opacity .25s ease-out;z-index:999;}
 .lookbook-overlay.show{opacity:1;pointer-events:auto;}
 .lookbook-inner{width:100%;height:100%;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;}
@@ -100,6 +116,7 @@ form.inline{display:inline;margin:0;}
             data-user="{{ p['user'] }}"
             data-votes="{{ p['votes'] }}"
             alt="outfit"
+            loading="lazy"
           >
         </div>
 
@@ -122,7 +139,8 @@ form.inline{display:inline;margin:0;}
               </form>
             {% endif %}
           {% else %}
-            <!-- 未ログインは投票UIを出さない（閲覧のみ） -->
+            <!-- ★未ログインでもVOTEボタンは表示。押すとログインへ誘導 -->
+            <a class="btn btn-vote" href="{{ url_for('login', next='/') }}">VOTE</a>
           {% endif %}
         </div>
       </div>
