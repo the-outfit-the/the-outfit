@@ -302,7 +302,7 @@ body{
   image-rendering:auto;
 }
 .lookbook-credit{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.12em;text-align:center;}
-.lookbook-hint{margin-top:2px;fontsize:10px;color:var(--text-soft);text-align:center;}
+.lookbook-hint{margin-top:2px;font-size:10px;color:var(--text-soft);text-align:center;}
 @media (max-width:768px){
   .lookbook-overlay{padding:16px;}
   .lookbook-image-wrap{width:min(94vw, 980px); max-height:calc(100vh - 140px);}
@@ -356,7 +356,7 @@ form.inline{display:inline;margin:0;}
       <div>
         <a href="{{ url_for('upload') }}">UPLOAD</a>
         <form class="inline" method="post" action="{{ url_for('logout') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
           <button class="btn btn-logout" type="submit">LOGOUT</button>
         </form>
       </div>
@@ -409,7 +409,7 @@ form.inline{display:inline;margin:0;}
                     action="{{ url_for('unvote', post_id=p['id']) }}"
                     data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
                     data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
               </form>
             {% else %}
@@ -418,7 +418,7 @@ form.inline{display:inline;margin:0;}
                     action="{{ url_for('vote', post_id=p['id']) }}"
                     data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
                     data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button class="btn btn-vote" type="submit">VOTE</button>
               </form>
             {% endif %}
@@ -575,7 +575,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const duration = 2600;
     const count = 90;
 
-    // ★点滅を「もう少し遅く」：12–20 → 8–14
+    // 点滅（やや遅め）
     const freqMin = 8;
     const freqMax = 14;
 
@@ -621,6 +621,10 @@ document.addEventListener("DOMContentLoaded", function () {
     requestAnimationFrame(frame);
   }
 
+  async function parseJsonSafe(res){
+    try { return await res.json(); } catch(_) { return null; }
+  }
+
   // Vote (AJAX)
   const voteForms = document.querySelectorAll(".vote-form");
   voteForms.forEach((form) => {
@@ -633,15 +637,37 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         const res = await fetch(form.action, {
           method: "POST",
-          headers: { "Accept": "application/json", "X-Requested-With": "fetch" },
+          headers: {
+            "Accept": "application/json",
+            "X-Requested-With": "XMLHttpRequest"
+          },
           body: new FormData(form),
           credentials: "same-origin"
         });
 
-        if (!res.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
+        const data = await parseJsonSafe(res);
 
-        const data = await res.json();
-        if (!data || !data.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
+        // ★認証切れ/DBにユーザーいない/CSRF不正 → loginへ誘導
+        if (!res.ok) {
+          if (btn) btn.classList.remove("btn-loading");
+          if (data && data.redirect) {
+            window.location.href = data.redirect;
+            return;
+          }
+          // JSONが無い場合は通常フォールバック
+          form.submit();
+          return;
+        }
+
+        if (!data || !data.ok) {
+          if (btn) btn.classList.remove("btn-loading");
+          if (data && data.redirect) {
+            window.location.href = data.redirect;
+            return;
+          }
+          form.submit();
+          return;
+        }
 
         const votesEl = document.getElementById(`votes-${data.post_id}`);
         if (votesEl) { votesEl.textContent = `${data.votes} VOTES`; popCount(votesEl); }

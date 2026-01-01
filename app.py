@@ -106,14 +106,42 @@ def generate_csrf_token():
     return token
 
 
+def is_ajax():
+    # fetchでもXMLHttpRequestでもまとめて扱う
+    return request.headers.get("X-Requested-With") is not None or request.accept_mimetypes.best == "application/json"
+
+
 def validate_csrf():
+    # フォーム or ヘッダ どちらでもOKにする（AJAX耐性）
     form_token = request.form.get("csrf_token", "")
+    header_token = (
+        request.headers.get("X-CSRFToken")
+        or request.headers.get("X-CSRF-Token")
+        or request.headers.get("X-CSRF")
+        or ""
+    )
+    token = form_token or header_token
+
     session_token = session.get("_csrf_token")
-    if not form_token or not session_token or form_token != session_token:
+    if not token or not session_token or token != session_token:
         abort(400, description="Invalid CSRF token")
 
 
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
+
+
+# CSRF失敗時：AJAXならJSONでログイン誘導もできるようにする（400の理由が分かりやすくなる）
+@app.errorhandler(400)
+def bad_request(e):
+    # CSRF以外も400に来るので、descriptionを見る
+    desc = getattr(e, "description", "") or ""
+    if desc == "Invalid CSRF token" and is_ajax():
+        return jsonify({
+            "ok": False,
+            "reason": "csrf",
+            "redirect": url_for("login", next=request.full_path)
+        }), 400
+    return e
 
 
 # ---------------------------
@@ -141,6 +169,7 @@ def load_logged_in_user():
     username = session.get("user")
     real_user = fetch_db_user(username)
 
+    # セッションに user がいても、DBにいなければ無効化
     if real_user is None and "user" in session:
         session.pop("user", None)
 
@@ -160,7 +189,12 @@ def login_required_api(view):
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
         if g.user is None:
-            return jsonify({"ok": False, "reason": "auth"}), 401
+            # ★APIは必ず「ログインへ誘導」情報も返す（JSで扱える）
+            return jsonify({
+                "ok": False,
+                "reason": "auth",
+                "redirect": url_for("login", next=request.full_path)
+            }), 401
         return view(*args, **kwargs)
     return wrapped
 
