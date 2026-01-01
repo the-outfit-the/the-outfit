@@ -14,14 +14,18 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
 # ---------------------------
-# 基本設定
+# 保存先（Render対策）
+#   - 永続Diskがあれば DATA_DIR が入る
+#   - 無ければ /tmp（揮発だが動作はする）
 # ---------------------------
 
 BASE_DIR = Path(__file__).resolve().parent
-UPLOAD_DIR = BASE_DIR / "uploads"
-UPLOAD_DIR.mkdir(exist_ok=True)
+DATA_DIR = Path(os.environ.get("DATA_DIR", "/tmp")).resolve()
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-DB_PATH = BASE_DIR / "the_outfit.db"
+DB_PATH = Path(os.environ.get("DB_PATH", str(DATA_DIR / "the_outfit.db")))
+UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", str(DATA_DIR / "uploads")))
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 APP_ENV = os.environ.get("APP_ENV", "dev").lower()
 DEBUG = APP_ENV != "prod"
@@ -40,7 +44,8 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 def get_db():
     if "db" not in g:
-        conn = sqlite3.connect(DB_PATH)
+        # Gunicorn/Render環境での安定化
+        conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         g.db = conn
     return g.db
@@ -112,11 +117,10 @@ app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
 
 # ---------------------------
-# ログイン状態の判定（★ DB にユーザーがいるか毎回確認）
+# ログイン状態の判定（DBにいないユーザーを完全に無効化）
 # ---------------------------
 
 def fetch_db_user(username):
-    """users テーブルに存在する username だけを有効とする"""
     if not username:
         return None
     db = get_db()
@@ -124,52 +128,38 @@ def fetch_db_user(username):
         "SELECT username FROM users WHERE username = ?",
         (username,),
     ).fetchone()
-    if row is None:
-        return None
-    return row["username"]
+    return row["username"] if row else None
 
 
 @app.before_request
 def load_logged_in_user():
     """
-    毎リクエストで session から username を取り出し、
-    DB に実在しなければ session から削除して「未ログイン扱い」にする。
-    これにより、DB からユーザー削除後に古いセッションだけ残っていても、
-    アップロードや投票は一切できなくなる。
+    ★重要：ここで必ず init_db() してテーブル未作成でも落ちないようにする
     """
+    init_db()
+
     username = session.get("user")
     real_user = fetch_db_user(username)
 
     if real_user is None and "user" in session:
-        # DB から消えているセッションは破棄
         session.pop("user", None)
 
-    g.user = real_user  # None か 実在ユーザー名
+    g.user = real_user  # None か DBに存在するusername
 
 
 def login_required(view):
-    """
-    アップロードなど HTML 画面で使う用。
-    DB にいないユーザーも g.user は None になるのでブロックされる。
-    """
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
         if g.user is None:
-            # next で元のURLに戻れるようにする
             return redirect(url_for("login", next=request.path))
         return view(*args, **kwargs)
     return wrapped
 
 
 def login_required_api(view):
-    """
-    fetch() から叩かれる API 用。
-    未ログイン or DBにいないユーザーは JSON で 401 を返す。
-    """
     @functools.wraps(view)
     def wrapped(*args, **kwargs):
         if g.user is None:
-            # JS から扱いやすいように JSON を返す
             return jsonify({"ok": False, "reason": "auth"}), 401
         return view(*args, **kwargs)
     return wrapped
@@ -192,7 +182,6 @@ def allowed_file(filename):
 
 @app.route("/")
 def index():
-    init_db()
     db = get_db()
 
     posts = db.execute(
@@ -212,7 +201,6 @@ def index():
     else:
         voted_ids = set()
 
-    # テンプレート側の条件表示用
     return render_template(
         "home.html",
         posts=posts,
@@ -224,17 +212,13 @@ def index():
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
-    init_db()
     if request.method == "POST":
         validate_csrf()
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
 
         if not username or not password:
-            return render_template(
-                "register.html",
-                error="ユーザー名とパスワードを入力してください。",
-            )
+            return render_template("register.html", error="ユーザー名とパスワードを入力してください。")
 
         db = get_db()
         exists = db.execute(
@@ -242,10 +226,7 @@ def register():
             (username,),
         ).fetchone()
         if exists:
-            return render_template(
-                "register.html",
-                error="このユーザー名は既に使われています。",
-            )
+            return render_template("register.html", error="このユーザー名は既に使われています。")
 
         db.execute(
             "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
@@ -260,7 +241,6 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
-    init_db()
     if request.method == "POST":
         validate_csrf()
         username = (request.form.get("username") or "").strip()
@@ -274,10 +254,7 @@ def login():
         ).fetchone()
 
         if row is None or not check_password_hash(row["password_hash"], password):
-            return render_template(
-                "login.html",
-                error="ユーザー名またはパスワードが違います。",
-            )
+            return render_template("login.html", error="ユーザー名またはパスワードが違います。")
 
         session["user"] = row["username"]
         return redirect(next_url)
@@ -295,30 +272,19 @@ def logout():
 @app.route("/upload", methods=["GET", "POST"])
 @login_required
 def upload():
-    init_db()
     if request.method == "POST":
         validate_csrf()
         if "photo" not in request.files:
-            return render_template(
-                "upload.html",
-                error="ファイルが選択されていません。",
-            )
+            return render_template("upload.html", error="ファイルが選択されていません。")
 
         file = request.files["photo"]
         if file.filename == "":
-            return render_template(
-                "upload.html",
-                error="ファイル名が空です。",
-            )
+            return render_template("upload.html", error="ファイル名が空です。")
 
         if not allowed_file(file.filename):
-            return render_template(
-                "upload.html",
-                error="対応していないファイル形式です。（png/jpg/jpeg/webp）",
-            )
+            return render_template("upload.html", error="対応していないファイル形式です。（png/jpg/jpeg/webp）")
 
         filename = secure_filename(file.filename)
-        # ランダムなプレフィックスを付けて衝突防止
         random_prefix = secrets.token_hex(8)
         final_name = f"{random_prefix}_{filename}"
         save_path = UPLOAD_DIR / final_name
@@ -326,10 +292,7 @@ def upload():
 
         db = get_db()
         db.execute(
-            """
-            INSERT INTO posts (filename, user, created_at, votes)
-            VALUES (?, ?, ?, 0)
-            """,
+            "INSERT INTO posts (filename, user, created_at, votes) VALUES (?, ?, ?, 0)",
             (final_name, g.user, datetime.utcnow().isoformat()),
         )
         db.commit()
@@ -350,63 +313,39 @@ def uploaded_file(filename):
 @app.route("/vote/<int:post_id>", methods=["POST"])
 @login_required_api
 def vote(post_id):
-    init_db()
     validate_csrf()
-
     db = get_db()
-    # 対象投稿の存在確認
-    post = db.execute(
-        "SELECT id FROM posts WHERE id = ?",
-        (post_id,),
-    ).fetchone()
+
+    post = db.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
     if post is None:
         return jsonify({"ok": False, "reason": "not_found"}), 404
 
-    # 既に投票済みなら何もしない
     already = db.execute(
         "SELECT 1 FROM votes WHERE user = ? AND post_id = ?",
         (g.user, post_id),
     ).fetchone()
     if already:
-        cur_votes = db.execute(
-            "SELECT votes FROM posts WHERE id = ?",
-            (post_id,),
-        ).fetchone()["votes"]
-        return jsonify(
-            {"ok": True, "post_id": post_id, "votes": cur_votes, "voted": True}
-        )
+        cur_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
+        return jsonify({"ok": True, "post_id": post_id, "votes": cur_votes, "voted": True})
 
     db.execute(
         "INSERT INTO votes (user, post_id, created_at) VALUES (?, ?, ?)",
         (g.user, post_id, datetime.utcnow().isoformat()),
     )
-    db.execute(
-        "UPDATE posts SET votes = votes + 1 WHERE id = ?",
-        (post_id,),
-    )
+    db.execute("UPDATE posts SET votes = votes + 1 WHERE id = ?", (post_id,))
     db.commit()
 
-    new_votes = db.execute(
-        "SELECT votes FROM posts WHERE id = ?",
-        (post_id,),
-    ).fetchone()["votes"]
-
-    return jsonify(
-        {"ok": True, "post_id": post_id, "votes": new_votes, "voted": True}
-    )
+    new_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
+    return jsonify({"ok": True, "post_id": post_id, "votes": new_votes, "voted": True})
 
 
 @app.route("/unvote/<int:post_id>", methods=["POST"])
 @login_required_api
 def unvote(post_id):
-    init_db()
     validate_csrf()
-
     db = get_db()
-    post = db.execute(
-        "SELECT id FROM posts WHERE id = ?",
-        (post_id,),
-    ).fetchone()
+
+    post = db.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
     if post is None:
         return jsonify({"ok": False, "reason": "not_found"}), 404
 
@@ -415,39 +354,16 @@ def unvote(post_id):
         (g.user, post_id),
     ).fetchone()
     if not exists:
-        cur_votes = db.execute(
-            "SELECT votes FROM posts WHERE id = ?",
-            (post_id,),
-        ).fetchone()["votes"]
-        return jsonify(
-            {"ok": True, "post_id": post_id, "votes": cur_votes, "voted": False}
-        )
+        cur_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
+        return jsonify({"ok": True, "post_id": post_id, "votes": cur_votes, "voted": False})
 
-    db.execute(
-        "DELETE FROM votes WHERE user = ? AND post_id = ?",
-        (g.user, post_id),
-    )
-    db.execute(
-        "UPDATE posts SET votes = MAX(votes - 1, 0) WHERE id = ?",
-        (post_id,),
-    )
+    db.execute("DELETE FROM votes WHERE user = ? AND post_id = ?", (g.user, post_id))
+    db.execute("UPDATE posts SET votes = MAX(votes - 1, 0) WHERE id = ?", (post_id,))
     db.commit()
 
-    new_votes = db.execute(
-        "SELECT votes FROM posts WHERE id = ?",
-        (post_id,),
-    ).fetchone()["votes"]
+    new_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
+    return jsonify({"ok": True, "post_id": post_id, "votes": new_votes, "voted": False})
 
-    return jsonify(
-        {"ok": True, "post_id": post_id, "votes": new_votes, "voted": False}
-    )
-
-
-# ---------------------------
-# エントリポイント
-# ---------------------------
 
 if __name__ == "__main__":
-    with app.app_context():
-        init_db()
     app.run(host="0.0.0.0", port=5000, debug=DEBUG)
