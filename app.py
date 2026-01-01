@@ -1,189 +1,341 @@
 import os
-import re
 import sqlite3
-import uuid
-import time
 import secrets
-from datetime import timedelta
+import functools
+from datetime import datetime
+from pathlib import Path
 
 from flask import (
     Flask, render_template, request, redirect,
-    url_for, session, flash, abort, send_from_directory, jsonify
+    url_for, session, send_from_directory,
+    g, jsonify, abort
 )
-from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.middleware.proxy_fix import ProxyFix
+from werkzeug.utils import secure_filename
 
+# ---------------------------
+# 基本設定
+# ---------------------------
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+BASE_DIR = Path(__file__).resolve().parent
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
-# Renderで有料 + Disk を使うときだけ DATA_DIR=/var/data を設定する
-DATA_DIR = os.environ.get("DATA_DIR", BASE_DIR)
+DB_PATH = BASE_DIR / "the_outfit.db"
 
-DB_PATH = os.path.join(DATA_DIR, "the_outfit.db")
-UPLOAD_FOLDER = os.path.join(DATA_DIR, "uploads")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-
-ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
-MAX_CONTENT_LENGTH = 5 * 1024 * 1024  # 5MB
-
-APP_ENV = os.environ.get("APP_ENV", "dev").lower()  # dev / prod
-SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")  # prodでは必ず上書き
-
-USERNAME_RE = re.compile(r"^[a-zA-Z0-9_\-]{3,20}$")  # 3-20文字
-
-CSP = (
-    "default-src 'self'; "
-    "img-src 'self' data:; "
-    "style-src 'self' 'unsafe-inline'; "
-    "script-src 'self' 'unsafe-inline'; "
-    "base-uri 'self'; "
-    "form-action 'self'; "
-    "frame-ancestors 'none'; "
-)
-
-_RATE_BUCKET = {}
-RATE_WINDOW_SEC = 60
-RATE_LIMITS = {
-    "login": 20,
-    "register": 10,
-    "upload": 20,
-}
+APP_ENV = os.environ.get("APP_ENV", "dev").lower()
+DEBUG = APP_ENV != "prod"
 
 app = Flask(__name__)
-app.secret_key = SECRET_KEY
-app.config["MAX_CONTENT_LENGTH"] = MAX_CONTENT_LENGTH
-app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-app.permanent_session_lifetime = timedelta(days=7)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
+app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
-app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
-app.config["SESSION_COOKIE_HTTPONLY"] = True
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
-app.config["SESSION_COOKIE_SECURE"] = (APP_ENV == "prod")
 
+# ---------------------------
+# DB ヘルパ
+# ---------------------------
 
 def get_db():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+    if "db" not in g:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
+        g.db = conn
+    return g.db
+
+
+@app.teardown_appcontext
+def close_db(exc):
+    db = g.pop("db", None)
+    if db is not None:
+        db.close()
 
 
 def init_db():
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("""
+    db = get_db()
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS users (
-            name TEXT PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    cur.execute("""
+            created_at TEXT NOT NULL
+        );
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user TEXT NOT NULL,
             filename TEXT NOT NULL,
-            votes INTEGER NOT NULL DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-    """)
-
-    cur.execute("""
+            user TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            votes INTEGER NOT NULL DEFAULT 0
+        );
+        """
+    )
+    db.execute(
+        """
         CREATE TABLE IF NOT EXISTS votes (
             user TEXT NOT NULL,
             post_id INTEGER NOT NULL,
+            created_at TEXT NOT NULL,
             PRIMARY KEY (user, post_id)
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-init_db()
+        );
+        """
+    )
+    db.commit()
 
 
-def client_ip() -> str:
-    return request.remote_addr or "unknown"
+# ---------------------------
+# CSRF
+# ---------------------------
 
-
-def rate_limit(action: str):
-    limit = RATE_LIMITS.get(action)
-    if not limit:
-        return
-
-    ip = client_ip()
-    now = time.time()
-    key = (ip, action)
-
-    bucket = _RATE_BUCKET.get(key, [])
-    bucket = [t for t in bucket if now - t < RATE_WINDOW_SEC]
-
-    if len(bucket) >= limit:
-        abort(429)
-
-    bucket.append(now)
-    _RATE_BUCKET[key] = bucket
-
-
-def allowed_ext(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def require_login():
-    if "user" not in session:
-        return redirect(url_for("login", next=request.path))
-    return None
-
-
-def csrf_get_token() -> str:
-    token = session.get("csrf_token")
+def generate_csrf_token():
+    token = session.get("_csrf_token")
     if not token:
         token = secrets.token_urlsafe(32)
-        session["csrf_token"] = token
+        session["_csrf_token"] = token
     return token
 
 
-def csrf_validate():
-    sent = request.form.get("csrf_token", "")
-    token = session.get("csrf_token", "")
-    if not token or not sent or not secrets.compare_digest(token, sent):
-        abort(400)
+def validate_csrf():
+    form_token = request.form.get("csrf_token", "")
+    session_token = session.get("_csrf_token")
+    if not form_token or not session_token or form_token != session_token:
+        abort(400, description="Invalid CSRF token")
 
 
-def is_ajax_json_request() -> bool:
-    # home.html から fetch で投票を投げるときに付けるヘッダで判定
+app.jinja_env.globals["csrf_token"] = generate_csrf_token
+
+
+# ---------------------------
+# ログイン状態の判定（★ DB にユーザーがいるか毎回確認）
+# ---------------------------
+
+def fetch_db_user(username):
+    """users テーブルに存在する username だけを有効とする"""
+    if not username:
+        return None
+    db = get_db()
+    row = db.execute(
+        "SELECT username FROM users WHERE username = ?",
+        (username,),
+    ).fetchone()
+    if row is None:
+        return None
+    return row["username"]
+
+
+@app.before_request
+def load_logged_in_user():
+    """
+    毎リクエストで session から username を取り出し、
+    DB に実在しなければ session から削除して「未ログイン扱い」にする。
+    これにより、DB からユーザー削除後に古いセッションだけ残っていても、
+    アップロードや投票は一切できなくなる。
+    """
+    username = session.get("user")
+    real_user = fetch_db_user(username)
+
+    if real_user is None and "user" in session:
+        # DB から消えているセッションは破棄
+        session.pop("user", None)
+
+    g.user = real_user  # None か 実在ユーザー名
+
+
+def login_required(view):
+    """
+    アップロードなど HTML 画面で使う用。
+    DB にいないユーザーも g.user は None になるのでブロックされる。
+    """
+    @functools.wraps(view)
+    def wrapped(*args, **kwargs):
+        if g.user is None:
+            # next で元のURLに戻れるようにする
+            return redirect(url_for("login", next=request.path))
+        return view(*args, **kwargs)
+    return wrapped
+
+
+def login_required_api(view):
+    """
+    fetch() から叩かれる API 用。
+    未ログイン or DBにいないユーザーは JSON で 401 を返す。
+    """
+    @functools.wraps(view)
+    def wrapped(*args, **kwargs):
+        if g.user is None:
+            # JS から扱いやすいように JSON を返す
+            return jsonify({"ok": False, "reason": "auth"}), 401
+        return view(*args, **kwargs)
+    return wrapped
+
+
+# ---------------------------
+# ユーティリティ
+# ---------------------------
+
+def allowed_file(filename):
     return (
-        request.headers.get("X-Requested-With", "") == "fetch"
-        or "application/json" in (request.headers.get("Accept", "") or "")
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
     )
 
 
-@app.context_processor
-def inject_csrf():
-    return {"csrf_token": csrf_get_token()}
+# ---------------------------
+# ルーティング
+# ---------------------------
+
+@app.route("/")
+def index():
+    init_db()
+    db = get_db()
+
+    posts = db.execute(
+        """
+        SELECT id, filename, user, votes, created_at
+        FROM posts
+        ORDER BY votes DESC, created_at DESC
+        """
+    ).fetchall()
+
+    if g.user:
+        rows = db.execute(
+            "SELECT post_id FROM votes WHERE user = ?",
+            (g.user,),
+        ).fetchall()
+        voted_ids = {row["post_id"] for row in rows}
+    else:
+        voted_ids = set()
+
+    # テンプレート側の条件表示用
+    return render_template(
+        "home.html",
+        posts=posts,
+        is_logged_in=g.user is not None,
+        user=g.user,
+        voted_ids=voted_ids,
+    )
 
 
-@app.after_request
-def set_security_headers(resp):
-    resp.headers["X-Content-Type-Options"] = "nosniff"
-    resp.headers["X-Frame-Options"] = "DENY"
-    resp.headers["Referrer-Policy"] = "no-referrer"
-    resp.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-    resp.headers["Content-Security-Policy"] = CSP
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    init_db()
+    if request.method == "POST":
+        validate_csrf()
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
 
-    if APP_ENV == "prod" and request.is_secure:
-        resp.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    return resp
+        if not username or not password:
+            return render_template(
+                "register.html",
+                error="ユーザー名とパスワードを入力してください。",
+            )
+
+        db = get_db()
+        exists = db.execute(
+            "SELECT 1 FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+        if exists:
+            return render_template(
+                "register.html",
+                error="このユーザー名は既に使われています。",
+            )
+
+        db.execute(
+            "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
+            (username, generate_password_hash(password), datetime.utcnow().isoformat()),
+        )
+        db.commit()
+        session["user"] = username
+        return redirect(url_for("index"))
+
+    return render_template("register.html")
 
 
-@app.errorhandler(429)
-def too_many(_):
-    return "Too Many Requests", 429
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    init_db()
+    if request.method == "POST":
+        validate_csrf()
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        next_url = request.args.get("next") or url_for("index")
+
+        db = get_db()
+        row = db.execute(
+            "SELECT username, password_hash FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+
+        if row is None or not check_password_hash(row["password_hash"], password):
+            return render_template(
+                "login.html",
+                error="ユーザー名またはパスワードが違います。",
+            )
+
+        session["user"] = row["username"]
+        return redirect(next_url)
+
+    return render_template("login.html")
+
+
+@app.route("/logout", methods=["POST"])
+def logout():
+    validate_csrf()
+    session.pop("user", None)
+    return redirect(url_for("index"))
+
+
+@app.route("/upload", methods=["GET", "POST"])
+@login_required
+def upload():
+    init_db()
+    if request.method == "POST":
+        validate_csrf()
+        if "photo" not in request.files:
+            return render_template(
+                "upload.html",
+                error="ファイルが選択されていません。",
+            )
+
+        file = request.files["photo"]
+        if file.filename == "":
+            return render_template(
+                "upload.html",
+                error="ファイル名が空です。",
+            )
+
+        if not allowed_file(file.filename):
+            return render_template(
+                "upload.html",
+                error="対応していないファイル形式です。（png/jpg/jpeg/webp）",
+            )
+
+        filename = secure_filename(file.filename)
+        # ランダムなプレフィックスを付けて衝突防止
+        random_prefix = secrets.token_hex(8)
+        final_name = f"{random_prefix}_{filename}"
+        save_path = UPLOAD_DIR / final_name
+        file.save(save_path)
+
+        db = get_db()
+        db.execute(
+            """
+            INSERT INTO posts (filename, user, created_at, votes)
+            VALUES (?, ?, ?, 0)
+            """,
+            (final_name, g.user, datetime.utcnow().isoformat()),
+        )
+        db.commit()
+        return redirect(url_for("index"))
+
+    return render_template("upload.html")
 
 
 @app.route("/uploads/<path:filename>")
@@ -191,217 +343,111 @@ def uploaded_file(filename):
     return send_from_directory(app.config["UPLOAD_FOLDER"], filename)
 
 
-@app.route("/", methods=["GET"])
-def home():
-    user = session.get("user")
+# ---------------------------
+# 投票 API
+# ---------------------------
 
-    conn = get_db()
-    cur = conn.cursor()
+@app.route("/vote/<int:post_id>", methods=["POST"])
+@login_required_api
+def vote(post_id):
+    init_db()
+    validate_csrf()
 
-    cur.execute("""
-        SELECT id, user, filename, votes
-        FROM posts
-        ORDER BY votes DESC, created_at DESC
-    """)
-    posts = cur.fetchall()
+    db = get_db()
+    # 対象投稿の存在確認
+    post = db.execute(
+        "SELECT id FROM posts WHERE id = ?",
+        (post_id,),
+    ).fetchone()
+    if post is None:
+        return jsonify({"ok": False, "reason": "not_found"}), 404
 
-    voted_ids = set()
-    if user:
-        cur.execute("SELECT post_id FROM votes WHERE user = ?", (user,))
-        voted_ids = {row["post_id"] for row in cur.fetchall()}
+    # 既に投票済みなら何もしない
+    already = db.execute(
+        "SELECT 1 FROM votes WHERE user = ? AND post_id = ?",
+        (g.user, post_id),
+    ).fetchone()
+    if already:
+        cur_votes = db.execute(
+            "SELECT votes FROM posts WHERE id = ?",
+            (post_id,),
+        ).fetchone()["votes"]
+        return jsonify(
+            {"ok": True, "post_id": post_id, "votes": cur_votes, "voted": True}
+        )
 
-    conn.close()
+    db.execute(
+        "INSERT INTO votes (user, post_id, created_at) VALUES (?, ?, ?)",
+        (g.user, post_id, datetime.utcnow().isoformat()),
+    )
+    db.execute(
+        "UPDATE posts SET votes = votes + 1 WHERE id = ?",
+        (post_id,),
+    )
+    db.commit()
 
-    return render_template(
-        "home.html",
-        user=user,
-        posts=posts,
-        voted_ids=voted_ids,
-        is_logged_in=bool(user)
+    new_votes = db.execute(
+        "SELECT votes FROM posts WHERE id = ?",
+        (post_id,),
+    ).fetchone()["votes"]
+
+    return jsonify(
+        {"ok": True, "post_id": post_id, "votes": new_votes, "voted": True}
     )
 
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        rate_limit("login")
-        csrf_validate()
-
-        name = request.form.get("name", "").strip()
-        password = request.form.get("password", "")
-
-        if not name or not password:
-            flash("ユーザー名とパスワードを入力してください。")
-            return render_template("login.html")
-
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT password_hash FROM users WHERE name = ?", (name,))
-        row = cur.fetchone()
-        conn.close()
-
-        if row and check_password_hash(row["password_hash"], password):
-            session.clear()
-            session["user"] = name
-            session.permanent = True
-            session["csrf_token"] = secrets.token_urlsafe(32)
-
-            nxt = request.args.get("next") or url_for("home")
-            if not nxt.startswith("/"):
-                nxt = url_for("home")
-            return redirect(nxt)
-
-        flash("ユーザー名またはパスワードが違います。")
-        return render_template("login.html")
-
-    return render_template("login.html")
-
-
-@app.route("/register", methods=["GET", "POST"])
-def register():
-    if request.method == "POST":
-        rate_limit("register")
-        csrf_validate()
-
-        name = request.form.get("name", "").strip()
-        password = request.form.get("password", "")
-
-        if not USERNAME_RE.match(name):
-            flash("ユーザー名は 3〜20文字（英数字/ _ / -）で入力してください。")
-            return render_template("register.html")
-
-        if len(password) < 8:
-            flash("パスワードは8文字以上にしてください。")
-            return render_template("register.html")
-
-        password_hash = generate_password_hash(password, method="pbkdf2:sha256", salt_length=16)
-
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute("SELECT 1 FROM users WHERE name = ?", (name,))
-        if cur.fetchone():
-            conn.close()
-            flash("このユーザー名はすでに使用されています。")
-            return render_template("register.html")
-
-        cur.execute("INSERT INTO users (name, password_hash) VALUES (?, ?)", (name, password_hash))
-        conn.commit()
-        conn.close()
-
-        session.clear()
-        session["user"] = name
-        session.permanent = True
-        session["csrf_token"] = secrets.token_urlsafe(32)
-        return redirect(url_for("home"))
-
-    return render_template("register.html")
-
-
-@app.route("/upload", methods=["GET", "POST"])
-def upload():
-    r = require_login()
-    if r:
-        return r
-
-    if request.method == "POST":
-        rate_limit("upload")
-        csrf_validate()
-
-        file = request.files.get("image")
-        if not file or file.filename == "":
-            flash("ファイルが選択されていません。")
-            return render_template("upload.html")
-
-        if not allowed_ext(file.filename):
-            flash("画像ファイル（png/jpg/jpeg/gif/webp）のみアップロードできます。")
-            return render_template("upload.html")
-
-        ext = file.filename.rsplit(".", 1)[1].lower()
-        filename = secure_filename(f"{uuid.uuid4().hex}.{ext}")
-        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-
-        conn = get_db()
-        cur = conn.cursor()
-        cur.execute(
-            "INSERT INTO posts (user, filename, votes) VALUES (?, ?, 0)",
-            (session["user"], filename)
-        )
-        conn.commit()
-        conn.close()
-
-        return redirect(url_for("home"))
-
-    return render_template("upload.html")
-
-
-@app.route("/vote/<int:post_id>", methods=["POST"])
-def vote(post_id):
-    r = require_login()
-    if r:
-        return r
-    csrf_validate()
-
-    user = session["user"]
-    conn = get_db()
-    cur = conn.cursor()
-
-    cur.execute("SELECT 1 FROM votes WHERE user = ? AND post_id = ?", (user, post_id))
-    already = cur.fetchone()
-
-    if not already:
-        cur.execute("INSERT INTO votes (user, post_id) VALUES (?, ?)", (user, post_id))
-        cur.execute("UPDATE posts SET votes = votes + 1 WHERE id = ?", (post_id,))
-        conn.commit()
-
-    # AjaxならJSONで返す（ページをリロードしない）
-    if is_ajax_json_request():
-        cur.execute("SELECT votes FROM posts WHERE id = ?", (post_id,))
-        row = cur.fetchone()
-        conn.close()
-        return jsonify({"ok": True, "post_id": post_id, "votes": int(row["votes"]) if row else 0, "voted": True})
-
-    conn.close()
-    return redirect(url_for("home"))
-
-
 @app.route("/unvote/<int:post_id>", methods=["POST"])
+@login_required_api
 def unvote(post_id):
-    r = require_login()
-    if r:
-        return r
-    csrf_validate()
+    init_db()
+    validate_csrf()
 
-    user = session["user"]
-    conn = get_db()
-    cur = conn.cursor()
+    db = get_db()
+    post = db.execute(
+        "SELECT id FROM posts WHERE id = ?",
+        (post_id,),
+    ).fetchone()
+    if post is None:
+        return jsonify({"ok": False, "reason": "not_found"}), 404
 
-    cur.execute("SELECT 1 FROM votes WHERE user = ? AND post_id = ?", (user, post_id))
-    exists = cur.fetchone()
-
-    if exists:
-        cur.execute("DELETE FROM votes WHERE user = ? AND post_id = ?", (user, post_id))
-        cur.execute(
-            "UPDATE posts SET votes = CASE WHEN votes > 0 THEN votes - 1 ELSE 0 END WHERE id = ?",
-            (post_id,)
+    exists = db.execute(
+        "SELECT 1 FROM votes WHERE user = ? AND post_id = ?",
+        (g.user, post_id),
+    ).fetchone()
+    if not exists:
+        cur_votes = db.execute(
+            "SELECT votes FROM posts WHERE id = ?",
+            (post_id,),
+        ).fetchone()["votes"]
+        return jsonify(
+            {"ok": True, "post_id": post_id, "votes": cur_votes, "voted": False}
         )
-        conn.commit()
 
-    if is_ajax_json_request():
-        cur.execute("SELECT votes FROM posts WHERE id = ?", (post_id,))
-        row = cur.fetchone()
-        conn.close()
-        return jsonify({"ok": True, "post_id": post_id, "votes": int(row["votes"]) if row else 0, "voted": False})
+    db.execute(
+        "DELETE FROM votes WHERE user = ? AND post_id = ?",
+        (g.user, post_id),
+    )
+    db.execute(
+        "UPDATE posts SET votes = MAX(votes - 1, 0) WHERE id = ?",
+        (post_id,),
+    )
+    db.commit()
 
-    conn.close()
-    return redirect(url_for("home"))
+    new_votes = db.execute(
+        "SELECT votes FROM posts WHERE id = ?",
+        (post_id,),
+    ).fetchone()["votes"]
+
+    return jsonify(
+        {"ok": True, "post_id": post_id, "votes": new_votes, "voted": False}
+    )
 
 
-@app.route("/logout", methods=["POST"])
-def logout():
-    csrf_validate()
-    session.clear()
-    return redirect(url_for("home"))
-
+# ---------------------------
+# エントリポイント
+# ---------------------------
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    with app.app_context():
+        init_db()
+    app.run(host="0.0.0.0", port=5000, debug=DEBUG)
