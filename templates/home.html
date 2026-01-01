@@ -302,7 +302,7 @@ body{
   image-rendering:auto;
 }
 .lookbook-credit{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.12em;text-align:center;}
-.lookbook-hint{margin-top:2px;font-size:10px;color:var(--text-soft);text-align:center;}
+.lookbook-hint{margin-top:2px;fontsize:10px;color:var(--text-soft);text-align:center;}
 @media (max-width:768px){
   .lookbook-overlay{padding:16px;}
   .lookbook-image-wrap{width:min(94vw, 980px); max-height:calc(100vh - 140px);}
@@ -356,7 +356,7 @@ form.inline{display:inline;margin:0;}
       <div>
         <a href="{{ url_for('upload') }}">UPLOAD</a>
         <form class="inline" method="post" action="{{ url_for('logout') }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
           <button class="btn btn-logout" type="submit">LOGOUT</button>
         </form>
       </div>
@@ -409,7 +409,7 @@ form.inline{display:inline;margin:0;}
                     action="{{ url_for('unvote', post_id=p['id']) }}"
                     data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
                     data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
               </form>
             {% else %}
@@ -418,7 +418,7 @@ form.inline{display:inline;margin:0;}
                     action="{{ url_for('vote', post_id=p['id']) }}"
                     data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
                     data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button class="btn btn-vote" type="submit">VOTE</button>
               </form>
             {% endif %}
@@ -534,33 +534,35 @@ document.addEventListener("DOMContentLoaded", function () {
     return { canvas, ctx, w, h };
   }
 
-  function drawStar(ctx, x, y, r, rot, a, warm){
+  // --- Powder Snow Glitter (high-brand) ---
+  function drawGlitter(ctx, x, y, r, a, warm){
     ctx.save();
     ctx.translate(x, y);
-    ctx.rotate(rot);
 
+    // ふわっとした光（粒）
     ctx.globalAlpha = a;
     ctx.globalCompositeOperation = "lighter";
-    ctx.shadowBlur = r * 2.4;
+    ctx.shadowBlur = r * 6.0;
     ctx.shadowColor = warm ? "rgba(230,194,122,1)" : "rgba(255,255,255,1)";
 
-    ctx.beginPath();
-    const spikes = 4;
-    const outer = r;
-    const inner = r * 0.45;
-    for (let i = 0; i < spikes * 2; i++){
-      const ang = (Math.PI / spikes) * i;
-      const rr = (i % 2 === 0) ? outer : inner;
-      ctx.lineTo(Math.cos(ang) * rr, Math.sin(ang) * rr);
-    }
-    ctx.closePath();
-
-    const g = ctx.createRadialGradient(0,0,0, 0,0,r*1.3);
-    g.addColorStop(0, "rgba(255,255,255,1)");
-    g.addColorStop(0.45, warm ? "rgba(230,194,122,0.95)" : "rgba(255,255,255,0.85)");
-    g.addColorStop(1, "rgba(230,194,122,0)");
+    const g = ctx.createRadialGradient(0,0,0, 0,0,r*3.0);
+    g.addColorStop(0.00, warm ? "rgba(255,255,255,1)" : "rgba(255,255,255,1)");
+    g.addColorStop(0.35, warm ? "rgba(230,194,122,0.95)" : "rgba(255,255,255,0.90)");
+    g.addColorStop(1.00, "rgba(230,194,122,0)");
     ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(0, 0, r*2.2, 0, Math.PI*2);
     ctx.fill();
+
+    // ほんの少しだけ“キラッ”の芯（線は出さない：小さい点で）
+    if (a > 0.65){
+      ctx.globalAlpha = Math.min(1, a * 1.1);
+      ctx.shadowBlur = r * 3.5;
+      ctx.fillStyle = warm ? "rgba(230,194,122,0.95)" : "rgba(255,255,255,0.95)";
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(0.6, r*0.55), 0, Math.PI*2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -572,42 +574,65 @@ document.addEventListener("DOMContentLoaded", function () {
     removeExistingCanvas(card);
     const { canvas, ctx, w, h } = createSparkleCanvas(imgWrap);
 
+    // ここで“粉雪感”を作る：小粒多め + ふわっと漂い + ランダム点滅
     const duration = 2600;
-    const count = 90;
-
-    // 点滅（やや遅め）
-    const freqMin = 8;
-    const freqMax = 14;
+    const count = 78; // 重くならない範囲で多め
 
     const start = performance.now();
 
-    const stars = new Array(count).fill(0).map(() => ({
-      x: rnd(0.03*w, 0.97*w),
-      y: rnd(0.03*h, 0.97*h),
-      r: rnd(1.6, 3.2),
-      rot: rnd(-0.5, 0.5),
-      warm: Math.random() < 0.45,
-      f: rnd(freqMin, freqMax),
-      ph: rnd(0, Math.PI * 2),
-      sharp: rnd(3.5, 6.8)
-    }));
+    const flakes = new Array(count).fill(0).map(() => {
+      const baseR = rnd(0.75, 1.85);     // 粒は小さめ
+      const drift = rnd(5, 14);          // ふわっと漂う量
+      const fall = rnd(4, 12);           // ほんの少し下へ
+      const freq = rnd(4.8, 9.2);        // きらめき頻度（粉雪っぽい）
+      const phase = rnd(0, Math.PI * 2);
+      const sharp = rnd(4.2, 7.4);       // パキッと瞬く（大きいほどメリハリ）
+      return {
+        x0: rnd(0.04*w, 0.96*w),
+        y0: rnd(0.04*h, 0.96*h),
+        r0: baseR,
+        drift,
+        fall,
+        warm: Math.random() < 0.42,
+        freq,
+        phase,
+        sharp,
+        // 出たり消えたりの“間”を作る（粒ごとに違う）
+        gate: rnd(0.65, 0.92),
+      };
+    });
 
     function frame(now){
-      const t = (now - start) / 1000;
-      const alive = (now - start) < duration;
+      const elapsed = now - start;
+      const t = elapsed / 1000;
+      const alive = elapsed < duration;
 
       ctx.clearRect(0, 0, w, h);
 
+      // 残像を薄く残して“ふわっ”と見せる（網にならない程度）
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(0,0,0,0.04)";
+      ctx.fillStyle = "rgba(0,0,0,0.06)";
       ctx.fillRect(0, 0, w, h);
 
-      for (const s of stars){
-        const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * s.f * t + s.ph);
-        const pulse = Math.pow(base, s.sharp);
-        const a = Math.min(1, pulse * 1.45);
+      for (const f of flakes){
+        // 漂い（粉雪）
+        const x = f.x0 + Math.sin(t * 1.15 + f.phase) * f.drift;
+        const y = f.y0 + Math.sin(t * 0.85 + f.phase*0.7) * (f.fall * 0.25) + (t * (f.fall * 0.10));
+
+        // きらめき（点滅）
+        const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * f.freq * t + f.phase);
+        const pulse = Math.pow(base, f.sharp);
+
+        // “出たり消えたり”をより分かりやすく（ゲートで間引き）
+        const gated = (pulse > f.gate) ? pulse : (pulse * 0.08);
+
+        // 明るさ強め（あなたの指定）
+        const a = Math.min(1, gated * 1.65);
+
         if (a > 0.03){
-          drawStar(ctx, s.x, s.y, s.r * (1.0 + a*1.15), s.rot, a, s.warm);
+          // 大きさも少し脈動
+          const rr = f.r0 * (1.0 + a * 0.95);
+          drawGlitter(ctx, x, y, rr, a, f.warm);
         }
       }
 
@@ -619,10 +644,6 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     requestAnimationFrame(frame);
-  }
-
-  async function parseJsonSafe(res){
-    try { return await res.json(); } catch(_) { return null; }
   }
 
   // Vote (AJAX)
@@ -637,37 +658,15 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         const res = await fetch(form.action, {
           method: "POST",
-          headers: {
-            "Accept": "application/json",
-            "X-Requested-With": "XMLHttpRequest"
-          },
+          headers: { "Accept": "application/json", "X-Requested-With": "fetch" },
           body: new FormData(form),
           credentials: "same-origin"
         });
 
-        const data = await parseJsonSafe(res);
+        if (!res.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
 
-        // ★認証切れ/DBにユーザーいない/CSRF不正 → loginへ誘導
-        if (!res.ok) {
-          if (btn) btn.classList.remove("btn-loading");
-          if (data && data.redirect) {
-            window.location.href = data.redirect;
-            return;
-          }
-          // JSONが無い場合は通常フォールバック
-          form.submit();
-          return;
-        }
-
-        if (!data || !data.ok) {
-          if (btn) btn.classList.remove("btn-loading");
-          if (data && data.redirect) {
-            window.location.href = data.redirect;
-            return;
-          }
-          form.submit();
-          return;
-        }
+        const data = await res.json();
+        if (!data || !data.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
 
         const votesEl = document.getElementById(`votes-${data.post_id}`);
         if (votesEl) { votesEl.textContent = `${data.votes} VOTES`; popCount(votesEl); }
@@ -701,7 +700,7 @@ document.addEventListener("DOMContentLoaded", function () {
           addOnce(card, "vote-stars", 1200);
           runSparkle(card);
           addRibbon(card);
-          showToast("VOTED ✦", "Slightly slower twinkle.");
+          showToast("VOTED ✦", "Powder-snow glitter.");
         } else {
           removeExistingCanvas(card);
           addOnce(card, "unvote-purple", 1600);
