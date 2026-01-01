@@ -1,44 +1,52 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>The Outfit - Login</title>
-<style>
-body{margin:0;background:#050507;color:#f5f5f4;font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",system-ui,sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-.card{background:#0b0c10;border-radius:24px;border:1px solid rgba(255,255,255,.08);box-shadow:0 30px 80px rgba(0,0,0,.9);padding:32px 28px 26px;width:320px;}
-.title{font-size:22px;letter-spacing:.3em;text-transform:uppercase;margin-bottom:18px;text-align:center;}
-label{font-size:12px;color:#a1a1aa;display:block;margin-bottom:4px;}
-input{width:100%;padding:8px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.16);background:#050507;color:#f5f5f4;outline:none;font-size:13px;margin-bottom:14px;}
-button{width:100%;padding:9px 10px;border-radius:999px;border:1px solid #e6c27a;background:#e6c27a;color:#050507;font-size:12px;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;}
-.sub{margin-top:12px;font-size:11px;color:#a1a1aa;text-align:center;}
-a{color:#e6c27a;text-decoration:none;}
-.flash{color:#f97373;font-size:11px;margin-bottom:8px;text-align:center;}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>The Outfit - Login</title>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;background:#0b0b0f;color:#fff}
+    .wrap{min-height:100vh;display:grid;place-items:center;padding:32px}
+    .card{width:min(520px,92vw);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.14);border-radius:18px;padding:26px;backdrop-filter:blur(10px)}
+    h1{margin:0 0 14px;font-size:26px;letter-spacing:.02em}
+    .muted{color:rgba(255,255,255,.7);font-size:14px;margin:0 0 18px}
+    label{display:block;margin:10px 0 6px;color:rgba(255,255,255,.85);font-size:13px}
+    input{width:100%;box-sizing:border-box;padding:12px 12px;border-radius:12px;border:1px solid rgba(255,255,255,.18);background:rgba(0,0,0,.35);color:#fff;outline:none}
+    input:focus{border-color:rgba(255,255,255,.45)}
+    .btn{width:100%;margin-top:14px;padding:12px 14px;border-radius:12px;border:0;background:#fff;color:#000;font-weight:700;cursor:pointer}
+    .sub{display:flex;justify-content:space-between;gap:12px;margin-top:14px;font-size:14px}
+    .sub a{color:rgba(255,255,255,.85);text-decoration:none}
+    .sub a:hover{color:#fff;text-decoration:underline}
+    .err{background:rgba(255,0,80,.16);border:1px solid rgba(255,0,80,.35);padding:10px 12px;border-radius:12px;margin:12px 0;color:#ffd3df}
+  </style>
 </head>
 <body>
-<div class="card">
-  <div class="title">THE OUTFIT</div>
+  <div class="wrap">
+    <div class="card">
+      <h1>ログイン</h1>
+      <p class="muted">The Outfitにログインして投票・投稿を楽しもう。</p>
 
-  {% with messages = get_flashed_messages() %}
-    {% if messages %}
-      <div class="flash">{% for m in messages %}{{ m }}<br>{% endfor %}</div>
-    {% endif %}
-  {% endwith %}
+      {% if error %}
+        <div class="err">{{ error }}</div>
+      {% endif %}
 
-  <form method="post">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <form method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>ユーザー名</label>
+        <input name="username" autocomplete="username" required>
 
-    <label>ユーザー名</label>
-    <input type="text" name="name" autocomplete="username">
+        <label>パスワード</label>
+        <input type="password" name="password" autocomplete="current-password" required>
 
-    <label>パスワード</label>
-    <input type="password" name="password" autocomplete="current-password">
+        <button class="btn" type="submit">ログイン</button>
+      </form>
 
-    <button type="submit">LOG IN</button>
-  </form>
-
-  <div class="sub">初めての方は <a href="{{ url_for('register') }}">新規登録</a></div>
-  <div class="sub"><a href="{{ url_for('home') }}">ランキングを見る</a></div>
-</div>
+      <div class="sub">
+        <a href="{{ url_for('register') }}">新規登録</a>
+        <!-- ここが修正点：home → index -->
+        <a href="{{ url_for('index') }}">ランキングを見る</a>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
