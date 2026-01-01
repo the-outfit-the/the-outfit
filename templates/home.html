@@ -302,7 +302,7 @@ body{
   image-rendering:auto;
 }
 .lookbook-credit{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.12em;text-align:center;}
-.lookbook-hint{margin-top:2px;font-size:10px;color:var(--text-soft);text-align:center;}
+.lookbook-hint{margin-top:2px;fontsize:10px;color:var(--text-soft);text-align:center;}
 @media (max-width:768px){
   .lookbook-overlay{padding:16px;}
   .lookbook-image-wrap{width:min(94vw, 980px); max-height:calc(100vh - 140px);}
@@ -512,7 +512,6 @@ document.addEventListener("DOMContentLoaded", function () {
   }
   function rnd(min, max){ return min + Math.random() * (max - min); }
 
-  // ===== Canvas Sparkle =====
   function removeExistingCanvas(card){
     const old = card.querySelector(".sparkle-canvas");
     if (old) old.remove();
@@ -542,8 +541,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     ctx.globalAlpha = a;
     ctx.globalCompositeOperation = "lighter";
-
-    // ★星を小さくした分、影も締めて“粒”感に
     ctx.shadowBlur = r * 2.4;
     ctx.shadowColor = warm ? "rgba(230,194,122,1)" : "rgba(255,255,255,1)";
 
@@ -577,23 +574,21 @@ document.addEventListener("DOMContentLoaded", function () {
 
     const duration = 2600;
     const count = 90;
-    const freqMin = 12;
-    const freqMax = 20;
+
+    // ★点滅を「もう少し遅く」：12–20 → 8–14
+    const freqMin = 8;
+    const freqMax = 14;
+
     const start = performance.now();
 
     const stars = new Array(count).fill(0).map(() => ({
       x: rnd(0.03*w, 0.97*w),
       y: rnd(0.03*h, 0.97*h),
-
-      // ★ここが「だいぶ小さく」：前回3.0–6.0 → 1.6–3.2
       r: rnd(1.6, 3.2),
-
       rot: rnd(-0.5, 0.5),
       warm: Math.random() < 0.45,
       f: rnd(freqMin, freqMax),
       ph: rnd(0, Math.PI * 2),
-
-      // 小粒でも“瞬き”が分かるよう鋭さは維持
       sharp: rnd(3.5, 6.8)
     }));
 
@@ -643,24 +638,13 @@ document.addEventListener("DOMContentLoaded", function () {
           credentials: "same-origin"
         });
 
-        if (!res.ok) {
-          if (btn) btn.classList.remove("btn-loading");
-          form.submit();
-          return;
-        }
+        if (!res.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
 
         const data = await res.json();
-        if (!data || !data.ok) {
-          if (btn) btn.classList.remove("btn-loading");
-          form.submit();
-          return;
-        }
+        if (!data || !data.ok) { if (btn) btn.classList.remove("btn-loading"); form.submit(); return; }
 
         const votesEl = document.getElementById(`votes-${data.post_id}`);
-        if (votesEl) {
-          votesEl.textContent = `${data.votes} VOTES`;
-          popCount(votesEl);
-        }
+        if (votesEl) { votesEl.textContent = `${data.votes} VOTES`; popCount(votesEl); }
 
         const wrap = document.querySelector(`.post[data-post-id="${data.post_id}"]`);
         if (wrap) {
@@ -691,7 +675,7 @@ document.addEventListener("DOMContentLoaded", function () {
           addOnce(card, "vote-stars", 1200);
           runSparkle(card);
           addRibbon(card);
-          showToast("VOTED ✦", "Tiny sparkles.");
+          showToast("VOTED ✦", "Slightly slower twinkle.");
         } else {
           removeExistingCanvas(card);
           addOnce(card, "unvote-purple", 1600);
