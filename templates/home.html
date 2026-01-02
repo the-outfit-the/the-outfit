@@ -81,7 +81,7 @@ body{
   transition:opacity .3s var(--ease);
 }
 .post-inner:hover::before{opacity:1;animation:sweep 1.2s var(--ease) 1;}
-@keyframes sweep{0%{transform:translateX(-60%);}100%{transform:translateX(60%);}}
+@keyframes sweep{0%{transform:translateX(-60%);}100%{transform:translateX(60%);} }
 
 .post-img-wrap{
   position:relative;
@@ -177,7 +177,7 @@ body{
 
 /* VOTE: 画像も少し華やかに */
 .post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.12) contrast(1.05) brightness(1.04);
+  filter:saturate(1.08) contrast(1.03) brightness(1.02);
 }
 
 /* ribbons/stamps */
@@ -549,42 +549,42 @@ document.addEventListener("DOMContentLoaded", function () {
     return { canvas, ctx, w, h };
   }
 
+  // ★粉雪描画（弱め：1/3）
   function drawGlitter(ctx, x, y, r, a, warm){
     ctx.save();
     ctx.translate(x, y);
 
-    // 粉雪っぽい「粒」＋ たまに細い“クロス”で分かりやすく
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = a;
 
-    // 外側のグロー（少し強め）
-    ctx.shadowBlur = r * 10.0;
+    // グロー弱め（1/3）
+    ctx.shadowBlur = r * 3.2;
     ctx.shadowColor = warm ? "rgba(230,194,122,1)" : "rgba(255,255,255,1)";
 
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3.6);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3.2);
     g.addColorStop(0.00, "rgba(255,255,255,1)");
-    g.addColorStop(0.22, warm ? "rgba(255,235,205,0.98)" : "rgba(255,255,255,0.96)");
-    g.addColorStop(0.55, warm ? "rgba(230,194,122,0.90)" : "rgba(255,255,255,0.78)");
+    g.addColorStop(0.28, warm ? "rgba(255,235,205,0.78)" : "rgba(255,255,255,0.72)");
+    g.addColorStop(0.62, warm ? "rgba(230,194,122,0.58)" : "rgba(255,255,255,0.46)");
     g.addColorStop(1.00, "rgba(230,194,122,0)");
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 2.2, 0, Math.PI * 2);
+    ctx.arc(0, 0, r * 1.9, 0, Math.PI * 2);
     ctx.fill();
 
-    // 芯（点）
-    ctx.shadowBlur = r * 3.8;
-    ctx.fillStyle = warm ? "rgba(230,194,122,0.98)" : "rgba(255,255,255,0.95)";
+    // 芯も弱め
+    ctx.shadowBlur = r * 1.2;
+    ctx.fillStyle = warm ? "rgba(230,194,122,0.72)" : "rgba(255,255,255,0.68)";
     ctx.beginPath();
-    ctx.arc(0, 0, Math.max(0.9, r * 0.55), 0, Math.PI * 2);
+    ctx.arc(0, 0, Math.max(0.8, r * 0.48), 0, Math.PI * 2);
     ctx.fill();
 
-    // たまに“キラッ”を見える化（安っぽい星にしない：短い細線）
-    if (a > 0.55){
-      ctx.globalAlpha = Math.min(1, a * 0.85);
-      ctx.shadowBlur = r * 2.5;
-      ctx.lineWidth = 0.9;
-      ctx.strokeStyle = "rgba(255,255,255,0.95)";
-      const L = r * 5.2;
+    // “キラッ”の細線はかなり控えめ＆出現条件を厳しめ
+    if (a > 0.78){
+      ctx.globalAlpha = Math.min(1, a * 0.38);
+      ctx.shadowBlur = r * 1.0;
+      ctx.lineWidth = 0.8;
+      ctx.strokeStyle = "rgba(255,255,255,0.65)";
+      const L = r * 4.4;
       ctx.beginPath();
       ctx.moveTo(-L, 0);
       ctx.lineTo(L, 0);
@@ -605,51 +605,50 @@ document.addEventListener("DOMContentLoaded", function () {
     removeExistingCanvas(card);
     const { canvas, ctx, w, h } = createSparkleCanvas(imgWrap);
 
-    // もっと分かりやすい粉雪：小粒を増やす + クリック直後に“キラッ”を少しだけ追加
-    const duration = 1800;
-    const count = 140;       // 粒を増やす（重くなりすぎない範囲）
-    const burstCount = 22;   // クリック直後の小さなバースト（見えやすさ用）
+    // ★全体を「1/3」くらいに弱める
+    const duration = 1200;  // 1800 → 1200（短く）
+    const count = 48;       // 140 → 48（粒数を約1/3）
+    const burstCount = 7;   // 22 → 7（バースト約1/3）
 
     const start = performance.now();
     let alive = true;
 
-    // 常時漂う粉雪（全体）
+    // 常時漂う粉雪
     const flakes = new Array(count).fill(0).map(() => {
-      const baseR = rnd(0.95, 2.45);     // 少し大きめ
-      const drift = rnd(8, 22);          // ふわっと漂う量UP
-      const fall = rnd(10, 28);          // ほんの少し下へ（見える）
-      const freq = rnd(3.2, 6.6);        // 点滅はややゆっくり
+      const baseR = rnd(0.85, 2.05);   // ほんの少し小さめ
+      const drift = rnd(6, 16);
+      const fall  = rnd(8, 22);
+      const freq  = rnd(3.4, 6.2);
       const phase = rnd(0, Math.PI * 2);
-      const sharp = rnd(3.4, 6.0);       // パキッと瞬く
+      const sharp = rnd(3.6, 5.6);
       return {
         x0: rnd(0.04*w, 0.96*w),
         y0: rnd(0.04*h, 0.96*h),
         r0: baseR,
         drift,
         fall,
-        warm: Math.random() < 0.55,      // ゴールド寄りを少し増やす
+        warm: Math.random() < 0.42,     // ゴールド比率も少し下げる
         freq,
         phase,
         sharp,
-        gate: rnd(0.52, 0.86),           // 出現率UP
-        speed: rnd(0.75, 1.25),
+        gate: rnd(0.62, 0.88),          // 出現率を下げて控えめに
+        speed: rnd(0.85, 1.15),
       };
     });
 
-    // クリック直後の“キラッ”（中心から少し飛ぶ粒）
+    // クリック直後バースト（控えめ）
     const cx = w * 0.50;
     const cy = h * 0.48;
     const burst = new Array(burstCount).fill(0).map(() => {
       const ang = rnd(0, Math.PI * 2);
-      const sp = rnd(0.9, 2.0);
+      const sp = rnd(0.8, 1.6);
       return {
-        x: cx,
-        y: cy,
+        x: cx, y: cy,
         vx: Math.cos(ang) * sp,
         vy: Math.sin(ang) * sp,
-        r: rnd(1.6, 3.1),
-        warm: Math.random() < 0.70,
-        life: rnd(520, 780),             // ms
+        r: rnd(1.2, 2.4),
+        warm: Math.random() < 0.55,
+        life: rnd(420, 640),
         born: 0,
       };
     });
@@ -659,57 +658,52 @@ document.addEventListener("DOMContentLoaded", function () {
       const t = elapsed / 1000;
       alive = elapsed < duration;
 
-      // 残像：少し弱めに消して、ふわっと“見える”
+      // 残像を強めに消す（見え方も控えめ）
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(0,0,0,0.08)";
+      ctx.fillStyle = "rgba(0,0,0,0.18)";
       ctx.fillRect(0, 0, w, h);
 
-      // 全体フェードアウト（終盤）
-      const tail = Math.max(0, Math.min(1, (duration - elapsed) / 420));
+      // 終盤フェード
+      const tail = Math.max(0, Math.min(1, (duration - elapsed) / 320));
 
       // 粉雪
       for (const f of flakes){
-        // 漂い（粉雪）
         const x = f.x0 + Math.sin(t * 1.05 + f.phase) * f.drift;
-        let y = f.y0 + (t * (f.fall * 0.14 * f.speed)) + Math.sin(t * 0.8 + f.phase*0.7) * (f.fall * 0.22);
+        let y = f.y0 + (t * (f.fall * 0.12 * f.speed)) + Math.sin(t * 0.8 + f.phase*0.7) * (f.fall * 0.18);
 
-        // 画面外に行ったら上に戻す
         if (y > h + 12){
           y = -12;
           f.y0 = rnd(-h*0.15, h*0.10);
           f.x0 = rnd(0.04*w, 0.96*w);
         }
 
-        // きらめき（点滅）
         const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * f.freq * t + f.phase);
         const pulse = Math.pow(base, f.sharp);
 
-        // “出たり消えたり”の間（強めに見えるように）
-        const gated = (pulse > f.gate) ? pulse : (pulse * 0.18);
+        const gated = (pulse > f.gate) ? pulse : (pulse * 0.06);
 
-        // 明るさ：アップ（分かりやすく）
-        const a = Math.min(1, gated * 2.35) * tail;
+        // ★明るさを約1/3（2.35相当 → 0.78）
+        const a = Math.min(1, gated * 0.78) * tail;
 
         if (a > 0.02){
-          // 大きさも脈動（少し強め）
-          const rr = f.r0 * (1.0 + a * 1.15);
+          // サイズの脈動も控えめに
+          const rr = f.r0 * (1.0 + a * 0.45);
           drawGlitter(ctx, x, y, rr, a, f.warm);
         }
       }
 
-      // クリック直後バースト（最初だけ）
+      // バースト（最初だけ・控えめ）
       for (const b of burst){
         if (b.born === 0) b.born = elapsed;
         const age = elapsed - b.born;
         if (age < 0 || age > b.life) continue;
 
-        const p = age / b.life; // 0..1
-        const bx = cx + b.vx * age * 0.65;
-        const by = cy + b.vy * age * 0.65;
+        const p = age / b.life;
+        const bx = cx + b.vx * age * 0.55;
+        const by = cy + b.vy * age * 0.55;
 
-        // 最初が明るく、後半フェード
-        const a = (1 - p) * 0.95 * tail;
-        const rr = b.r * (1.0 + p * 0.7);
+        const a = (1 - p) * 0.42 * tail; // 控えめ
+        const rr = b.r * (1.0 + p * 0.35);
 
         if (a > 0.02){
           drawGlitter(ctx, bx, by, rr, a, b.warm);
@@ -723,8 +717,8 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    // 最初は真っ黒クリアではなく、少しだけ暗幕
-    ctx.fillStyle = "rgba(0,0,0,0.25)";
+    // 初期の暗幕も弱め
+    ctx.fillStyle = "rgba(0,0,0,0.20)";
     ctx.fillRect(0, 0, w, h);
 
     requestAnimationFrame(frame);
@@ -778,13 +772,11 @@ document.addEventListener("DOMContentLoaded", function () {
           throw new Error("Request failed");
         }
 
-        // vote count
         if (votesEl){
           votesEl.textContent = data.votes + " VOTES";
           popCount(votesEl);
         }
 
-        // datasetも更新（Lookbook表示の票数）
         const wrap = postEl ? postEl.querySelector(".post-img-wrap") : null;
         if (wrap) {
           const img = wrap.querySelector(".look-img");
