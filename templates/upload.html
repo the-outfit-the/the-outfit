@@ -15,4 +15,46 @@
     input[type="text"]:focus{border-color:rgba(255,255,255,.45)}
     input[type="file"]{width:100%;padding:12px;border-radius:12px;border:1px dashed rgba(255,255,255,.22);background:rgba(0,0,0,.25);color:rgba(255,255,255,.85)}
     .btn{width:100%;margin-top:14px;padding:12px 14px;border-radius:12px;border:0;background:#fff;color:#000;font-weight:700;cursor:pointer}
-    .sub{display:flex;justify-content:space-betwee
+    .sub{display:flex;justify-content:space-between;gap:12px;margin-top:14px;font-size:14px}
+    .sub a{color:rgba(255,255,255,.85);text-decoration:none}
+    .sub a:hover{color:#fff;text-decoration:underline}
+    .err{background:rgba(255,0,80,.16);border:1px solid rgba(255,0,80,.35);padding:10px 12px;border-radius:12px;margin:12px 0;color:#ffd3df}
+    form.inline{display:inline;margin:0;}
+    .btn-logout{background:transparent;color:rgba(255,255,255,.85);border:0;padding:0;font:inherit;cursor:pointer}
+    .btn-logout:hover{text-decoration:underline;color:#fff}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>写真をアップロード</h1>
+      <p class="muted">投稿した写真はランキングに表示され、投票を集められます。</p>
+
+      {% if error %}
+        <div class="err">{{ error }}</div>
+      {% endif %}
+
+      <form method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <label>タイトル（任意）</label>
+        <input type="text" name="title" placeholder="例：Monochrome Minimal Look">
+
+        <label>画像ファイル（jpg / png / webp）</label>
+        <input type="file" name="photo" accept="image/*" required>
+
+        <button class="btn" type="submit">アップロード</button>
+      </form>
+
+      <div class="sub">
+        <a href="{{ url_for('index') }}">ランキングへ戻る</a>
+
+        <form class="inline" method="post" action="{{ url_for('logout') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn-logout" type="submit">ログアウト</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

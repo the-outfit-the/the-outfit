@@ -593,4 +593,116 @@ document.addEventListener("DOMContentLoaded", function () {
           ctx.strokeStyle = "rgba(255,255,255,1)";
           ctx.beginPath();
           ctx.moveTo(p.x - 3, p.y);
-          ctx.lineTo(p.x + 3
+          ctx.lineTo(p.x + 3, p.y);
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+
+      if (dt < DURATION){
+        requestAnimationFrame(frame);
+      }else{
+        canvas.remove();
+      }
+    }
+    requestAnimationFrame(frame);
+
+    // リサイズに追従
+    const onResize = () => resize();
+    window.addEventListener("resize", onResize, {passive:true});
+    setTimeout(()=>window.removeEventListener("resize", onResize), DURATION+200);
+  }
+
+  async function postVote(url, csrf){
+    const fd = new FormData();
+    fd.append("csrf_token", csrf);
+
+    const res = await fetch(url, {
+      method: "POST",
+      body: fd,
+      credentials: "same-origin",
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+    });
+
+    let data = null;
+    try { data = await res.json(); } catch(e) {}
+
+    if (res.status === 401 && data && data.redirect){
+      window.location.href = data.redirect;
+      return null;
+    }
+    if (!res.ok){
+      // CSRF等
+      if (data && data.redirect){
+        window.location.href = data.redirect;
+        return null;
+      }
+      throw new Error("Request failed");
+    }
+    return data;
+  }
+
+  // Vote / Unvote
+  const forms = document.querySelectorAll(".vote-form");
+  forms.forEach((form) => {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const card = form.closest(".post-inner");
+      const post = form.closest(".post");
+      const postId = post ? post.getAttribute("data-post-id") : null;
+      const votesEl = document.getElementById("votes-" + postId);
+
+      const csrf = form.querySelector('input[name="csrf_token"]').value;
+      const voteUrl = form.getAttribute("data-vote-url");
+      const unvoteUrl = form.getAttribute("data-unvote-url");
+
+      const isUnvote = form.action.includes("/unvote/");
+      const url = isUnvote ? unvoteUrl : voteUrl;
+
+      const btn = form.querySelector("button");
+      btn.classList.add("btn-loading");
+
+      try{
+        const data = await postVote(url, csrf);
+        if (!data) return;
+
+        // vote count
+        if (votesEl){
+          votesEl.textContent = data.votes + " VOTES";
+          popCount(votesEl);
+        }
+
+        // effect
+        if (!isUnvote){
+          addOnce(card, "vote-flash", 580);
+          addOnce(card, "vote-stars", 650);
+          addRibbon(card);
+          spawnSparkle(card);
+          showToast("VOTED", "Your vote is counted.");
+          btn.textContent = "REMOVE VOTE";
+          btn.classList.remove("btn-vote");
+          btn.classList.add("btn-unvote");
+          form.action = unvoteUrl;
+        }else{
+          addOnce(card, "unvote-purple", 1550);
+          addStamp(card);
+          showToast("UNVOTED", "Vote removed.");
+          btn.textContent = "VOTE";
+          btn.classList.remove("btn-unvote");
+          btn.classList.add("btn-vote");
+          form.action = voteUrl;
+        }
+      }catch(err){
+        showToast("ERROR", "Please try again.");
+      }finally{
+        btn.classList.remove("btn-loading");
+      }
+    });
+  });
+});
+</script>
+
+</body>
+</html>
