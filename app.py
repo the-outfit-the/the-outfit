@@ -4,18 +4,27 @@ import secrets
 import functools
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 from flask import (
-    Flask, render_template, request, redirect,
-    url_for, session, send_from_directory,
-    g, jsonify, abort
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    session,
+    send_from_directory,
+    g,
+    jsonify,
+    abort,
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
+
 # ---------------------------
 # 保存先（Render対策）
-#   - 永続Diskがあれば DATA_DIR が入る
+#   - 永続Diskがあれば DATA_DIR を指定（例: /var/data）
 #   - 無ければ /tmp（揮発だが動作はする）
 # ---------------------------
 
@@ -31,7 +40,7 @@ APP_ENV = os.environ.get("APP_ENV", "dev").lower()
 DEBUG = APP_ENV != "prod"
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
@@ -44,9 +53,15 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 def get_db():
     if "db" not in g:
-        # Gunicorn/Render環境での安定化
-        conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
+        conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        # 安定化（環境によっては効かないが害は少ない）
+        try:
+            conn.execute("PRAGMA foreign_keys=ON;")
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA synchronous=NORMAL;")
+        except sqlite3.Error:
+            pass
         g.db = conn
     return g.db
 
@@ -130,17 +145,21 @@ def validate_csrf():
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
 
-# CSRF失敗時：AJAXならJSONでログイン誘導もできるようにする（400の理由が分かりやすくなる）
 @app.errorhandler(400)
 def bad_request(e):
     # CSRF以外も400に来るので、descriptionを見る
     desc = getattr(e, "description", "") or ""
     if desc == "Invalid CSRF token" and is_ajax():
-        return jsonify({
-            "ok": False,
-            "reason": "csrf",
-            "redirect": url_for("login", next=request.full_path)
-        }), 400
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "reason": "csrf",
+                    "redirect": url_for("login", next=request.full_path),
+                }
+            ),
+            400,
+        )
     return e
 
 
@@ -161,9 +180,7 @@ def fetch_db_user(username):
 
 @app.before_request
 def load_logged_in_user():
-    """
-    ★重要：ここで必ず init_db() してテーブル未作成でも落ちないようにする
-    """
+    # ★重要：ここで必ず init_db()（テーブル未作成でも落ちない）
     init_db()
 
     username = session.get("user")
@@ -190,11 +207,16 @@ def login_required_api(view):
     def wrapped(*args, **kwargs):
         if g.user is None:
             # ★APIは必ず「ログインへ誘導」情報も返す（JSで扱える）
-            return jsonify({
-                "ok": False,
-                "reason": "auth",
-                "redirect": url_for("login", next=request.full_path)
-            }), 401
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "reason": "auth",
+                        "redirect": url_for("login", next=request.full_path),
+                    }
+                ),
+                401,
+            )
         return view(*args, **kwargs)
     return wrapped
 
@@ -204,10 +226,22 @@ def login_required_api(view):
 # ---------------------------
 
 def allowed_file(filename):
-    return (
-        "." in filename
-        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-    )
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def safe_next_url(next_url):
+    """
+    オープンリダイレクト対策：
+    - / から始まる相対パスだけ許可
+    """
+    if not next_url:
+        return None
+    p = urlparse(next_url)
+    if p.scheme or p.netloc:
+        return None
+    if not next_url.startswith("/"):
+        return None
+    return next_url
 
 
 # ---------------------------
@@ -250,9 +284,19 @@ def register():
         validate_csrf()
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
+        password2 = request.form.get("password2") or ""
 
         if not username or not password:
             return render_template("register.html", error="ユーザー名とパスワードを入力してください。")
+
+        if password != password2:
+            return render_template("register.html", error="パスワード（確認）が一致しません。")
+
+        if len(username) > 40:
+            return render_template("register.html", error="ユーザー名が長すぎます。（40文字以内）")
+
+        if len(password) < 8:
+            return render_template("register.html", error="パスワードは8文字以上にしてください。")
 
         db = get_db()
         exists = db.execute(
@@ -275,11 +319,12 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    next_url = safe_next_url(request.args.get("next")) or url_for("index")
+
     if request.method == "POST":
         validate_csrf()
         username = (request.form.get("username") or "").strip()
         password = request.form.get("password") or ""
-        next_url = request.args.get("next") or url_for("index")
 
         db = get_db()
         row = db.execute(
@@ -308,6 +353,7 @@ def logout():
 def upload():
     if request.method == "POST":
         validate_csrf()
+
         if "photo" not in request.files:
             return render_template("upload.html", error="ファイルが選択されていません。")
 

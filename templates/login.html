@@ -15,38 +15,4 @@
     input:focus{border-color:rgba(255,255,255,.45)}
     .btn{width:100%;margin-top:14px;padding:12px 14px;border-radius:12px;border:0;background:#fff;color:#000;font-weight:700;cursor:pointer}
     .sub{display:flex;justify-content:space-between;gap:12px;margin-top:14px;font-size:14px}
-    .sub a{color:rgba(255,255,255,.85);text-decoration:none}
-    .sub a:hover{color:#fff;text-decoration:underline}
-    .err{background:rgba(255,0,80,.16);border:1px solid rgba(255,0,80,.35);padding:10px 12px;border-radius:12px;margin:12px 0;color:#ffd3df}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="card">
-      <h1>ログイン</h1>
-      <p class="muted">The Outfitにログインして投票・投稿を楽しもう。</p>
-
-      {% if error %}
-        <div class="err">{{ error }}</div>
-      {% endif %}
-
-      <form method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <label>ユーザー名</label>
-        <input name="username" autocomplete="username" required>
-
-        <label>パスワード</label>
-        <input type="password" name="password" autocomplete="current-password" required>
-
-        <button class="btn" type="submit">ログイン</button>
-      </form>
-
-      <div class="sub">
-        <a href="{{ url_for('register') }}">新規登録</a>
-        <!-- ここが修正点：home → index -->
-        <a href="{{ url_for('index') }}">ランキングを見る</a>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
+    .sub a{color:rgba(255,255,255,.85);text-decorati
