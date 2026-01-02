@@ -313,7 +313,7 @@ body{
   position:fixed;
   right:18px;
   bottom:18px;
-  background:rgba(11,12,16,.88);
+  background:rgba(11,12,16,.90);
   border:1px solid rgba(255,255,255,.10);
   border-radius:14px;
   padding:10px 12px;
@@ -327,9 +327,31 @@ body{
   pointer-events:none;
   transition:opacity .22s var(--ease), transform .22s var(--ease);
   z-index:1000;
+  max-width:min(360px, calc(100vw - 36px));
 }
-.toast.show{opacity:1;transform:translateY(0);}
-.toast .small{display:block;color:var(--text-soft);font-size:10px;letter-spacing:.06em;margin-top:2px;}
+.toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.toast .row{display:flex;align-items:center;gap:10px;justify-content:space-between;}
+.toast .text{min-width:0;}
+.toast .small{display:block;color:var(--text-soft);font-size:10px;letter-spacing:.06em;margin-top:2px;white-space:normal;}
+.toast .action{
+  flex:0 0 auto;
+  display:none;
+  text-decoration:none;
+  color:#050507;
+  background:var(--accent);
+  border:1px solid rgba(230,194,122,.65);
+  padding:7px 10px;
+  border-radius:999px;
+  font-size:10px;
+  font-weight:800;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  transition:transform .18s var(--ease), opacity .18s var(--ease);
+}
+.toast .action:hover{opacity:.95;}
+.toast .action:active{transform:translateY(1px) scale(.99);}
+.toast.has-action .action{display:inline-flex;align-items:center;justify-content:center;}
+.toast .action:focus{outline:2px solid rgba(230,194,122,.55);outline-offset:2px;}
 
 form.inline{display:inline;margin:0;}
 
@@ -376,7 +398,7 @@ form.inline{display:inline;margin:0;}
   </div>
 
   {% if not is_logged_in %}
-    <div class="note">投票・投稿は <a href="{{ url_for('login', next='/') }}" style="color:var(--accent);text-decoration:none;">ログイン</a> 後にできます。</div>
+    <div class="note">投票・投稿はログイン後にできます。</div>
   {% endif %}
 
   {% if posts %}
@@ -422,7 +444,13 @@ form.inline{display:inline;margin:0;}
               </form>
             {% endif %}
           {% else %}
-            <a class="btn btn-vote" href="{{ url_for('login', next='/') }}">VOTE</a>
+            <!-- ★未ログイン：飛ばさず、トーストで上品に誘導 -->
+            <button
+              type="button"
+              class="btn btn-vote js-login-required"
+              data-login-url="{{ url_for('login', next='/') }}"
+              aria-label="Login required to vote"
+            >VOTE</button>
           {% endif %}
         </div>
       </div>
@@ -444,9 +472,15 @@ form.inline{display:inline;margin:0;}
   </div>
 </div>
 
-<div class="toast" id="toast">
-  <span id="toastMain">UPDATED</span>
-  <span class="small" id="toastSub">Your lookbook is live.</span>
+<!-- ★トースト（アクションボタン付き） -->
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <div class="row">
+    <div class="text">
+      <span id="toastMain">UPDATED</span>
+      <span class="small" id="toastSub">Your lookbook is live.</span>
+    </div>
+    <a id="toastAction" class="action" href="#">ACTION</a>
+  </div>
 </div>
 
 <script>
@@ -472,14 +506,38 @@ document.addEventListener("DOMContentLoaded", function () {
   const toast = document.getElementById("toast");
   const toastMain = document.getElementById("toastMain");
   const toastSub = document.getElementById("toastSub");
+  const toastAction = document.getElementById("toastAction");
   let toastTimer = null;
-  function showToast(main, sub) {
+
+  function showToast(main, sub, action){ // action: {label, href} | null
     toastMain.textContent = main;
     toastSub.textContent = sub;
+
+    // action button
+    if (action && action.label && action.href){
+      toast.classList.add("has-action");
+      toastAction.textContent = action.label;
+      toastAction.setAttribute("href", action.href);
+      toastAction.style.display = "inline-flex";
+    } else {
+      toast.classList.remove("has-action");
+      toastAction.textContent = "ACTION";
+      toastAction.setAttribute("href", "#");
+      toastAction.style.display = "none";
+    }
+
     toast.classList.add("show");
     if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 1650);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
   }
+
+  // ★未ログイン投票：上品に誘導（飛ばさない）
+  document.querySelectorAll(".js-login-required").forEach((btn)=>{
+    btn.addEventListener("click", ()=>{
+      const url = btn.getAttribute("data-login-url") || "/login";
+      showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:url });
+    });
+  });
 
   // Helpers
   function popCount(el){
@@ -510,6 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
     setTimeout(()=>s.remove(), 1350);
   }
   function rnd(min, max){ return min + Math.random() * (max - min); }
+  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
 
   function removeExistingCanvas(card){
     const old = card.querySelector(".sparkle-canvas");
@@ -534,7 +593,6 @@ document.addEventListener("DOMContentLoaded", function () {
     const w = rect.width;
     const h = rect.height;
 
-    // リサイズ追従（軽量）
     const onResize = () => {
       const r = imgWrap.getBoundingClientRect();
       canvas.width = Math.floor(r.width * dpr);
@@ -549,14 +607,9 @@ document.addEventListener("DOMContentLoaded", function () {
     return { canvas, ctx, w, h };
   }
 
-  // ---- Luxe Snowfall (High-brand) ----
-  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
-
-  // シャンパン寄りの色（白〜ゴールドの間で微妙に揺らす）
+  // Luxe Snowfall (High-brand)
   function champagneColor(warm, a){
-    // warm: 0..1
     const w = clamp01(warm);
-    // 白(255,255,255) → ゴールド(230,194,122)
     const r = Math.round(255*(1-w) + 230*w);
     const g = Math.round(255*(1-w) + 194*w);
     const b = Math.round(255*(1-w) + 122*w);
@@ -571,7 +624,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = a;
 
-    // ふわっとした“ボケ”感（外は薄く、中心は上品に）
     ctx.shadowBlur = r * 3.4;
     ctx.shadowColor = champagneColor(warm, 1);
 
@@ -586,14 +638,13 @@ document.addEventListener("DOMContentLoaded", function () {
     ctx.arc(0, 0, r*2.0, 0, Math.PI*2);
     ctx.fill();
 
-    // 中心の“芯”は小さく（高級感）
     ctx.shadowBlur = r * 1.1;
     ctx.fillStyle = champagneColor(warm, 0.55);
     ctx.beginPath();
     ctx.arc(0, 0, Math.max(0.75, r*0.38), 0, Math.PI*2);
     ctx.fill();
 
-    // ごく稀な“一閃フレア”（クロス禁止／一本だけ）
+    // 稀な一閃（一本だけ）
     if (a > 0.78){
       ctx.globalAlpha = a * 0.26;
       ctx.shadowBlur = r * 0.9;
@@ -616,29 +667,27 @@ document.addEventListener("DOMContentLoaded", function () {
     removeExistingCanvas(card);
     const { canvas, ctx, w, h } = createSparkleCanvas(imgWrap);
 
-    // “強さは控えめ”のまま、質感を上げる
     const duration = 1350;
-    const countFar  = 18; // 遠景
-    const countMid  = 22; // 中景
-    const countNear = 14; // 近景
-    const burstCount = 4; // ほんの少しだけ（上品）
+    const countFar  = 18;
+    const countMid  = 22;
+    const countNear = 14;
+    const burstCount = 4;
 
     const start = performance.now();
 
     function makeLayer(n, layer){
-      // layer: 0(far) 1(mid) 2(near)
       const arr = [];
       for (let i=0;i<n;i++){
         const depth = (layer===0? 0.55 : layer===1? 0.85 : 1.10);
         const baseR = rnd(0.70, 1.35) * depth;
         const drift = rnd(6, 14) * (layer===0? 0.70 : layer===1? 0.90 : 1.0);
         const fall  = rnd(7, 18) * (layer===0? 0.65 : layer===1? 0.85 : 1.0);
-        const freq  = rnd(2.8, 5.0);           // きらめきは落ち着いて
+        const freq  = rnd(2.8, 5.0);
         const phase = rnd(0, Math.PI*2);
         const sharp = rnd(3.6, 5.2);
-        const gate  = rnd(0.68, 0.90);         // 出現は控えめ
-        const warm  = clamp01(rnd(0.35, 0.85)); // ほどよくゴールド寄り
-        const tilt  = rnd(-0.55, 0.55);         // フレア方向に品を出す
+        const gate  = rnd(0.68, 0.90);
+        const warm  = clamp01(rnd(0.35, 0.85));
+        const tilt  = rnd(-0.55, 0.55);
         arr.push({
           x0: rnd(0.04*w, 0.96*w),
           y0: rnd(0.04*h, 0.96*h),
@@ -664,7 +713,6 @@ document.addEventListener("DOMContentLoaded", function () {
       ...makeLayer(countNear, 2),
     ];
 
-    // 上品な“極小バースト”（中心から少しだけ）
     const cx = w*0.50, cy = h*0.48;
     const burst = new Array(burstCount).fill(0).map(() => {
       const ang = rnd(0, Math.PI*2);
@@ -685,17 +733,13 @@ document.addEventListener("DOMContentLoaded", function () {
       const t = elapsed / 1000;
       const alive = elapsed < duration;
 
-      // トレイルは“薄く”残す（上品な余韻）
       ctx.globalCompositeOperation = "source-over";
       ctx.fillStyle = "rgba(0,0,0,0.14)";
       ctx.fillRect(0,0,w,h);
 
-      // 終盤フェード
       const tail = clamp01((duration - elapsed) / 360);
 
-      // 粉雪（上品：数より質）
       for (const f of flakes){
-        // 奥行きで動きを変える
         const driftAmp = f.drift * (f.layer===0? 0.85 : f.layer===1? 1.0 : 1.05);
         const fallAmp  = f.fall  * (f.layer===0? 0.70 : f.layer===1? 0.90 : 1.0);
 
@@ -708,24 +752,19 @@ document.addEventListener("DOMContentLoaded", function () {
           f.x0 = rnd(0.04*w, 0.96*w);
         }
 
-        // きらめき：控えめ、でも“質感”で見せる
         const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * f.freq * t + f.phase);
         const pulse = Math.pow(base, f.sharp);
         const gated = (pulse > f.gate) ? pulse : (pulse * 0.05);
 
-        // 明るさ（控えめを維持）
         const a = Math.min(1, gated * 0.78) * tail;
 
         if (a > 0.02){
-          // “ボケ”を少しだけ脈動
           const rr = f.r0 * (1.0 + a*0.40);
-          // フレアは「かなり稀」に：aが高い時だけ
           const tilt = f.tilt + Math.sin(t*0.35 + f.phase)*0.06;
           drawLuxeBokeh(ctx, x, y, rr, a, f.warm, tilt);
         }
       }
 
-      // 極小バースト（ほんのり）
       for (const b of burst){
         if (b.born === 0) b.born = elapsed;
         const age = elapsed - b.born;
@@ -750,7 +789,6 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    // 初期の暗幕（軽く）
     ctx.fillStyle = "rgba(0,0,0,0.18)";
     ctx.fillRect(0,0,w,h);
 
@@ -793,13 +831,17 @@ document.addEventListener("DOMContentLoaded", function () {
         let data = null;
         try { data = await res.json(); } catch(e) {}
 
+        // ★401は即リダイレクトしない：トーストで上品に誘導
         if (res.status === 401 && data && data.redirect){
-          window.location.href = data.redirect;
+          if (btn) btn.classList.remove("btn-loading");
+          showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:data.redirect });
           return;
         }
+
         if (!res.ok){
           if (data && data.redirect){
-            window.location.href = data.redirect;
+            if (btn) btn.classList.remove("btn-loading");
+            showToast("LOGIN REQUIRED", "Login to continue.", { label:"LOGIN", href:data.redirect });
             return;
           }
           throw new Error("Request failed");
