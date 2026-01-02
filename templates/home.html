@@ -100,7 +100,7 @@ body{
   z-index:40;
 }
 
-/* ★Canvas sparkle */
+/* Canvas: luxe snowfall */
 .sparkle-canvas{
   position:absolute;
   inset:0;
@@ -171,13 +171,13 @@ body{
 .vote-flash{animation:voteFlash .55s var(--ease) 1;}
 @keyframes voteFlash{
   0%{box-shadow:var(--shadow);border-color:rgba(230,194,122,.12);}
-  45%{box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.18), 0 0 64px rgba(230,194,122,.18);border-color:rgba(230,194,122,.55);}
+  45%{box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.18), 0 0 64px rgba(230,194,122,.14);border-color:rgba(230,194,122,.55);}
   100%{box-shadow:var(--shadow);border-color:var(--border);}
 }
 
-/* VOTE: 画像も少し華やかに */
+/* VOTE: 画像も上品に少しだけ */
 .post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.08) contrast(1.03) brightness(1.02);
+  filter:saturate(1.06) contrast(1.02) brightness(1.015);
 }
 
 /* ribbons/stamps */
@@ -204,7 +204,7 @@ body{
 .ribbon .dot{
   width:8px;height:8px;border-radius:50%;
   background:var(--accent);
-  box-shadow:0 0 0 7px rgba(230,194,122,.22), 0 0 28px rgba(230,194,122,.26);
+  box-shadow:0 0 0 7px rgba(230,194,122,.22), 0 0 28px rgba(230,194,122,.22);
 }
 @keyframes ribbonIn{
   0%{opacity:0; transform:translateY(14px) scale(.98);}
@@ -549,49 +549,60 @@ document.addEventListener("DOMContentLoaded", function () {
     return { canvas, ctx, w, h };
   }
 
-  // ★粉雪描画（弱め：1/3）
-  function drawGlitter(ctx, x, y, r, a, warm){
+  // ---- Luxe Snowfall (High-brand) ----
+  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+
+  // シャンパン寄りの色（白〜ゴールドの間で微妙に揺らす）
+  function champagneColor(warm, a){
+    // warm: 0..1
+    const w = clamp01(warm);
+    // 白(255,255,255) → ゴールド(230,194,122)
+    const r = Math.round(255*(1-w) + 230*w);
+    const g = Math.round(255*(1-w) + 194*w);
+    const b = Math.round(255*(1-w) + 122*w);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function drawLuxeBokeh(ctx, x, y, r, a, warm, tilt){
     ctx.save();
     ctx.translate(x, y);
+    ctx.rotate(tilt || 0);
 
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = a;
 
-    // グロー弱め（1/3）
-    ctx.shadowBlur = r * 3.2;
-    ctx.shadowColor = warm ? "rgba(230,194,122,1)" : "rgba(255,255,255,1)";
+    // ふわっとした“ボケ”感（外は薄く、中心は上品に）
+    ctx.shadowBlur = r * 3.4;
+    ctx.shadowColor = champagneColor(warm, 1);
 
-    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, r * 3.2);
-    g.addColorStop(0.00, "rgba(255,255,255,1)");
-    g.addColorStop(0.28, warm ? "rgba(255,235,205,0.78)" : "rgba(255,255,255,0.72)");
-    g.addColorStop(0.62, warm ? "rgba(230,194,122,0.58)" : "rgba(255,255,255,0.46)");
-    g.addColorStop(1.00, "rgba(230,194,122,0)");
-    ctx.fillStyle = g;
+    const outer = ctx.createRadialGradient(0,0,0, 0,0, r*3.2);
+    outer.addColorStop(0.00, champagneColor(warm*0.65, 0.85));
+    outer.addColorStop(0.25, champagneColor(warm, 0.35));
+    outer.addColorStop(0.65, champagneColor(warm, 0.12));
+    outer.addColorStop(1.00, champagneColor(warm, 0.0));
+
+    ctx.fillStyle = outer;
     ctx.beginPath();
-    ctx.arc(0, 0, r * 1.9, 0, Math.PI * 2);
+    ctx.arc(0, 0, r*2.0, 0, Math.PI*2);
     ctx.fill();
 
-    // 芯も弱め
-    ctx.shadowBlur = r * 1.2;
-    ctx.fillStyle = warm ? "rgba(230,194,122,0.72)" : "rgba(255,255,255,0.68)";
+    // 中心の“芯”は小さく（高級感）
+    ctx.shadowBlur = r * 1.1;
+    ctx.fillStyle = champagneColor(warm, 0.55);
     ctx.beginPath();
-    ctx.arc(0, 0, Math.max(0.8, r * 0.48), 0, Math.PI * 2);
+    ctx.arc(0, 0, Math.max(0.75, r*0.38), 0, Math.PI*2);
     ctx.fill();
 
-    // “キラッ”の細線はかなり控えめ＆出現条件を厳しめ
+    // ごく稀な“一閃フレア”（クロス禁止／一本だけ）
     if (a > 0.78){
-      ctx.globalAlpha = Math.min(1, a * 0.38);
-      ctx.shadowBlur = r * 1.0;
-      ctx.lineWidth = 0.8;
+      ctx.globalAlpha = a * 0.26;
+      ctx.shadowBlur = r * 0.9;
+      ctx.lineWidth = 0.85;
       ctx.strokeStyle = "rgba(255,255,255,0.65)";
-      const L = r * 4.4;
+      const L = r * 5.8;
       ctx.beginPath();
       ctx.moveTo(-L, 0);
       ctx.lineTo(L, 0);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(0, -L);
-      ctx.lineTo(0, L);
       ctx.stroke();
     }
 
@@ -605,108 +616,130 @@ document.addEventListener("DOMContentLoaded", function () {
     removeExistingCanvas(card);
     const { canvas, ctx, w, h } = createSparkleCanvas(imgWrap);
 
-    // ★全体を「1/3」くらいに弱める
-    const duration = 1200;  // 1800 → 1200（短く）
-    const count = 48;       // 140 → 48（粒数を約1/3）
-    const burstCount = 7;   // 22 → 7（バースト約1/3）
+    // “強さは控えめ”のまま、質感を上げる
+    const duration = 1350;
+    const countFar  = 18; // 遠景
+    const countMid  = 22; // 中景
+    const countNear = 14; // 近景
+    const burstCount = 4; // ほんの少しだけ（上品）
 
     const start = performance.now();
-    let alive = true;
 
-    // 常時漂う粉雪
-    const flakes = new Array(count).fill(0).map(() => {
-      const baseR = rnd(0.85, 2.05);   // ほんの少し小さめ
-      const drift = rnd(6, 16);
-      const fall  = rnd(8, 22);
-      const freq  = rnd(3.4, 6.2);
-      const phase = rnd(0, Math.PI * 2);
-      const sharp = rnd(3.6, 5.6);
-      return {
-        x0: rnd(0.04*w, 0.96*w),
-        y0: rnd(0.04*h, 0.96*h),
-        r0: baseR,
-        drift,
-        fall,
-        warm: Math.random() < 0.42,     // ゴールド比率も少し下げる
-        freq,
-        phase,
-        sharp,
-        gate: rnd(0.62, 0.88),          // 出現率を下げて控えめに
-        speed: rnd(0.85, 1.15),
-      };
-    });
+    function makeLayer(n, layer){
+      // layer: 0(far) 1(mid) 2(near)
+      const arr = [];
+      for (let i=0;i<n;i++){
+        const depth = (layer===0? 0.55 : layer===1? 0.85 : 1.10);
+        const baseR = rnd(0.70, 1.35) * depth;
+        const drift = rnd(6, 14) * (layer===0? 0.70 : layer===1? 0.90 : 1.0);
+        const fall  = rnd(7, 18) * (layer===0? 0.65 : layer===1? 0.85 : 1.0);
+        const freq  = rnd(2.8, 5.0);           // きらめきは落ち着いて
+        const phase = rnd(0, Math.PI*2);
+        const sharp = rnd(3.6, 5.2);
+        const gate  = rnd(0.68, 0.90);         // 出現は控えめ
+        const warm  = clamp01(rnd(0.35, 0.85)); // ほどよくゴールド寄り
+        const tilt  = rnd(-0.55, 0.55);         // フレア方向に品を出す
+        arr.push({
+          x0: rnd(0.04*w, 0.96*w),
+          y0: rnd(0.04*h, 0.96*h),
+          r0: baseR,
+          drift,
+          fall,
+          freq,
+          phase,
+          sharp,
+          gate,
+          warm,
+          tilt,
+          speed: rnd(0.85, 1.12) * (layer===0? 0.85 : layer===1? 1.0 : 1.08),
+          layer
+        });
+      }
+      return arr;
+    }
 
-    // クリック直後バースト（控えめ）
-    const cx = w * 0.50;
-    const cy = h * 0.48;
+    const flakes = [
+      ...makeLayer(countFar, 0),
+      ...makeLayer(countMid, 1),
+      ...makeLayer(countNear, 2),
+    ];
+
+    // 上品な“極小バースト”（中心から少しだけ）
+    const cx = w*0.50, cy = h*0.48;
     const burst = new Array(burstCount).fill(0).map(() => {
-      const ang = rnd(0, Math.PI * 2);
-      const sp = rnd(0.8, 1.6);
+      const ang = rnd(0, Math.PI*2);
+      const sp = rnd(0.7, 1.3);
       return {
-        x: cx, y: cy,
-        vx: Math.cos(ang) * sp,
-        vy: Math.sin(ang) * sp,
-        r: rnd(1.2, 2.4),
-        warm: Math.random() < 0.55,
-        life: rnd(420, 640),
+        vx: Math.cos(ang)*sp,
+        vy: Math.sin(ang)*sp,
+        r: rnd(0.95, 1.65),
+        warm: clamp01(rnd(0.55, 0.95)),
+        life: rnd(420, 620),
         born: 0,
+        tilt: rnd(-0.5, 0.5)
       };
     });
 
     function frame(now){
       const elapsed = now - start;
       const t = elapsed / 1000;
-      alive = elapsed < duration;
+      const alive = elapsed < duration;
 
-      // 残像を強めに消す（見え方も控えめ）
+      // トレイルは“薄く”残す（上品な余韻）
       ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(0,0,0,0.18)";
-      ctx.fillRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(0,0,0,0.14)";
+      ctx.fillRect(0,0,w,h);
 
       // 終盤フェード
-      const tail = Math.max(0, Math.min(1, (duration - elapsed) / 320));
+      const tail = clamp01((duration - elapsed) / 360);
 
-      // 粉雪
+      // 粉雪（上品：数より質）
       for (const f of flakes){
-        const x = f.x0 + Math.sin(t * 1.05 + f.phase) * f.drift;
-        let y = f.y0 + (t * (f.fall * 0.12 * f.speed)) + Math.sin(t * 0.8 + f.phase*0.7) * (f.fall * 0.18);
+        // 奥行きで動きを変える
+        const driftAmp = f.drift * (f.layer===0? 0.85 : f.layer===1? 1.0 : 1.05);
+        const fallAmp  = f.fall  * (f.layer===0? 0.70 : f.layer===1? 0.90 : 1.0);
 
-        if (y > h + 12){
-          y = -12;
-          f.y0 = rnd(-h*0.15, h*0.10);
+        const x = f.x0 + Math.sin(t*0.92 + f.phase) * driftAmp;
+        let y = f.y0 + (t * (fallAmp * 0.12 * f.speed)) + Math.sin(t*0.70 + f.phase*0.7) * (fallAmp * 0.14);
+
+        if (y > h + 10){
+          y = -10;
+          f.y0 = rnd(-h*0.10, h*0.10);
           f.x0 = rnd(0.04*w, 0.96*w);
         }
 
+        // きらめき：控えめ、でも“質感”で見せる
         const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * f.freq * t + f.phase);
         const pulse = Math.pow(base, f.sharp);
+        const gated = (pulse > f.gate) ? pulse : (pulse * 0.05);
 
-        const gated = (pulse > f.gate) ? pulse : (pulse * 0.06);
-
-        // ★明るさを約1/3（2.35相当 → 0.78）
+        // 明るさ（控えめを維持）
         const a = Math.min(1, gated * 0.78) * tail;
 
         if (a > 0.02){
-          // サイズの脈動も控えめに
-          const rr = f.r0 * (1.0 + a * 0.45);
-          drawGlitter(ctx, x, y, rr, a, f.warm);
+          // “ボケ”を少しだけ脈動
+          const rr = f.r0 * (1.0 + a*0.40);
+          // フレアは「かなり稀」に：aが高い時だけ
+          const tilt = f.tilt + Math.sin(t*0.35 + f.phase)*0.06;
+          drawLuxeBokeh(ctx, x, y, rr, a, f.warm, tilt);
         }
       }
 
-      // バースト（最初だけ・控えめ）
+      // 極小バースト（ほんのり）
       for (const b of burst){
         if (b.born === 0) b.born = elapsed;
         const age = elapsed - b.born;
         if (age < 0 || age > b.life) continue;
 
         const p = age / b.life;
-        const bx = cx + b.vx * age * 0.55;
-        const by = cy + b.vy * age * 0.55;
+        const bx = cx + b.vx * age * 0.45;
+        const by = cy + b.vy * age * 0.45;
 
-        const a = (1 - p) * 0.42 * tail; // 控えめ
-        const rr = b.r * (1.0 + p * 0.35);
+        const a = (1 - p) * 0.32 * tail;
+        const rr = b.r * (1.0 + p * 0.30);
 
         if (a > 0.02){
-          drawGlitter(ctx, bx, by, rr, a, b.warm);
+          drawLuxeBokeh(ctx, bx, by, rr, a, b.warm, b.tilt);
         }
       }
 
@@ -717,9 +750,9 @@ document.addEventListener("DOMContentLoaded", function () {
       }
     }
 
-    // 初期の暗幕も弱め
-    ctx.fillStyle = "rgba(0,0,0,0.20)";
-    ctx.fillRect(0, 0, w, h);
+    // 初期の暗幕（軽く）
+    ctx.fillStyle = "rgba(0,0,0,0.18)";
+    ctx.fillRect(0,0,w,h);
 
     requestAnimationFrame(frame);
   }
