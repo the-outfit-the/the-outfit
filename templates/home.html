@@ -51,6 +51,147 @@ body{
 .header-row h2{margin:0;font-size:16px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;}
 .header-row .sub{font-size:11px;color:var(--text-soft);}
 
+/* ===== Intro panel (editorial, luxe, lightweight) ===== */
+.intro{
+  margin:0 0 18px 0;
+  padding:14px 16px 14px 16px;
+  border-radius:18px;
+  border:1px solid rgba(255,255,255,.10);
+  background:
+    radial-gradient(1200px 240px at 10% 0%, rgba(230,194,122,.10), transparent 60%),
+    radial-gradient(900px 260px at 90% 0%, rgba(255,255,255,.06), transparent 58%),
+    rgba(255,255,255,.04);
+  box-shadow:0 28px 90px rgba(0,0,0,.65);
+  backdrop-filter:blur(10px);
+  overflow:hidden;
+}
+.intro-top{
+  display:flex;
+  gap:14px;
+  align-items:flex-start;
+  justify-content:space-between;
+  flex-wrap:wrap;
+}
+.intro-kicker{
+  font-size:10px;
+  letter-spacing:.28em;
+  text-transform:uppercase;
+  color:rgba(255,255,255,.72);
+}
+.intro-title{
+  margin:6px 0 0 0;
+  font-size:18px;
+  letter-spacing:.18em;
+  text-transform:uppercase;
+  font-weight:650;
+}
+.intro-desc{
+  margin:8px 0 0 0;
+  color:rgba(255,255,255,.76);
+  font-size:12px;
+  line-height:1.65;
+}
+.intro-steps{
+  margin:10px 0 0 0;
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.step-pill{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(0,0,0,.22);
+  color:rgba(255,255,255,.82);
+  font-size:10px;
+  letter-spacing:.14em;
+  text-transform:uppercase;
+}
+.step-pill b{
+  font-weight:800;
+  color:rgba(230,194,122,.92);
+  letter-spacing:.18em;
+}
+.intro-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+  justify-content:flex-end;
+  margin-top:8px;
+}
+.intro-actions .btn{
+  padding:7px 12px;
+}
+.intro-actions .ghost{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:7px 12px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(0,0,0,.20);
+  color:rgba(255,255,255,.78);
+  font-size:10px;
+  font-weight:750;
+  letter-spacing:.16em;
+  text-transform:uppercase;
+  text-decoration:none;
+  transition:opacity .18s var(--ease), transform .18s var(--ease);
+}
+.intro-actions .ghost:hover{opacity:.95;}
+.intro-actions .ghost:active{transform:translateY(1px) scale(.99);}
+
+/* collapsible details, but styled like editorial */
+.intro details{
+  margin-top:10px;
+  border-top:1px solid rgba(255,255,255,.08);
+  padding-top:10px;
+}
+.intro summary{
+  list-style:none;
+  cursor:pointer;
+  user-select:none;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:rgba(255,255,255,.76);
+  font-size:10px;
+  letter-spacing:.24em;
+  text-transform:uppercase;
+}
+.intro summary::-webkit-details-marker{display:none;}
+.intro summary .chev{
+  color:rgba(230,194,122,.85);
+  letter-spacing:.10em;
+  transform:rotate(0deg);
+  transition:transform .18s var(--ease), opacity .18s var(--ease);
+  opacity:.9;
+}
+.intro details[open] summary .chev{transform:rotate(180deg); opacity:1;}
+.intro-more{
+  margin-top:10px;
+  color:rgba(255,255,255,.74);
+  font-size:12px;
+  line-height:1.7;
+}
+.intro-more ul{
+  margin:8px 0 0 0;
+  padding:0 0 0 16px;
+}
+.intro-more li{
+  margin:6px 0;
+}
+@media (max-width:768px){
+  .intro-title{font-size:16px;}
+  .intro{padding:14px 14px;}
+}
+/* ===== /Intro ===== */
+
 .posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;}
 .post{border-radius:22px;overflow:hidden;}
 .post-inner{
@@ -397,9 +538,50 @@ form.inline{display:inline;margin:0;}
     <div class="sub">CURATED BY VOTES · LIVE FEED</div>
   </div>
 
-  {% if not is_logged_in %}
-    <div class="note">投票・投稿はログイン後にできます。</div>
-  {% endif %}
+  <!-- ★初見で「何のサイトか」分かる Intro（ハイブランド寄りに短く） -->
+  <section class="intro" aria-label="About The Outfit">
+    <div class="intro-top">
+      <div>
+        <div class="intro-kicker">EDITORIAL · COMMUNITY RANKING</div>
+        <div class="intro-title">POST OUTFITS. VOTE. RANK.</div>
+        <p class="intro-desc">
+          <b>The Outfit</b> は、世界中のファッション写真が集まる<strong>投票型ルックブック</strong>。<br>
+          見るだけならログイン不要。投票・投稿はログイン後にできます。
+        </p>
+
+        <div class="intro-steps" aria-label="How it works">
+          <span class="step-pill"><b>1</b>UPLOAD</span>
+          <span class="step-pill"><b>2</b>VOTE</span>
+          <span class="step-pill"><b>3</b>TOP RANK</span>
+        </div>
+      </div>
+
+      <div class="intro-actions" aria-label="Primary actions">
+        {% if is_logged_in %}
+          <a class="btn btn-unvote" href="{{ url_for('upload') }}">UPLOAD</a>
+          <a class="ghost" href="{{ url_for('index') }}">VIEW RANKING</a>
+        {% else %}
+          <a class="btn btn-unvote" href="{{ url_for('register') }}">REGISTER</a>
+          <a class="ghost" href="{{ url_for('login', next='/') }}">LOGIN</a>
+        {% endif %}
+      </div>
+    </div>
+
+    <details>
+      <summary>
+        WHAT IS THIS SITE?
+        <span class="chev">▾</span>
+      </summary>
+      <div class="intro-more">
+        <div>このサイトでできること：</div>
+        <ul>
+          <li><b>ランキング閲覧</b>：誰でもOK（ログイン不要）</li>
+          <li><b>投票</b>：ログイン必須（1人1票・取消可）</li>
+          <li><b>投稿</b>：ログイン必須（あなたの“今日の一枚”を世界へ）</li>
+        </ul>
+      </div>
+    </details>
+  </section>
 
   {% if posts %}
   <div class="posts">
@@ -444,7 +626,7 @@ form.inline{display:inline;margin:0;}
               </form>
             {% endif %}
           {% else %}
-            <!-- ★未ログイン：飛ばさず、トーストで上品に誘導 -->
+            <!-- 未ログイン：飛ばさず、トーストで上品に誘導 -->
             <button
               type="button"
               class="btn btn-vote js-login-required"
@@ -472,7 +654,7 @@ form.inline{display:inline;margin:0;}
   </div>
 </div>
 
-<!-- ★トースト（アクションボタン付き） -->
+<!-- トースト（アクションボタン付き） -->
 <div class="toast" id="toast" role="status" aria-live="polite">
   <div class="row">
     <div class="text">
@@ -509,11 +691,10 @@ document.addEventListener("DOMContentLoaded", function () {
   const toastAction = document.getElementById("toastAction");
   let toastTimer = null;
 
-  function showToast(main, sub, action){ // action: {label, href} | null
+  function showToast(main, sub, action){
     toastMain.textContent = main;
     toastSub.textContent = sub;
 
-    // action button
     if (action && action.label && action.href){
       toast.classList.add("has-action");
       toastAction.textContent = action.label;
@@ -531,7 +712,7 @@ document.addEventListener("DOMContentLoaded", function () {
     toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
   }
 
-  // ★未ログイン投票：上品に誘導（飛ばさない）
+  // 未ログイン投票：上品に誘導
   document.querySelectorAll(".js-login-required").forEach((btn)=>{
     btn.addEventListener("click", ()=>{
       const url = btn.getAttribute("data-login-url") || "/login";
@@ -644,7 +825,6 @@ document.addEventListener("DOMContentLoaded", function () {
     ctx.arc(0, 0, Math.max(0.75, r*0.38), 0, Math.PI*2);
     ctx.fill();
 
-    // 稀な一閃（一本だけ）
     if (a > 0.78){
       ctx.globalAlpha = a * 0.26;
       ctx.shadowBlur = r * 0.9;
@@ -831,7 +1011,6 @@ document.addEventListener("DOMContentLoaded", function () {
         let data = null;
         try { data = await res.json(); } catch(e) {}
 
-        // ★401は即リダイレクトしない：トーストで上品に誘導
         if (res.status === 401 && data && data.redirect){
           if (btn) btn.classList.remove("btn-loading");
           showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:data.redirect });
@@ -889,6 +1068,47 @@ document.addEventListener("DOMContentLoaded", function () {
         if (btn) btn.classList.remove("btn-loading");
         showToast("ERROR", "Please try again.");
       }
+    });
+  });
+
+  // (ログイン必須ボタンは上で設定済み)
+});
+</script>
+
+<script>
+/* Separate small script to attach guest vote toast (kept tiny & safe) */
+document.addEventListener("DOMContentLoaded", function () {
+  const toast = document.getElementById("toast");
+  const toastMain = document.getElementById("toastMain");
+  const toastSub = document.getElementById("toastSub");
+  const toastAction = document.getElementById("toastAction");
+  let toastTimer = null;
+
+  function showToast(main, sub, action){
+    toastMain.textContent = main;
+    toastSub.textContent = sub;
+
+    if (action && action.label && action.href){
+      toast.classList.add("has-action");
+      toastAction.textContent = action.label;
+      toastAction.setAttribute("href", action.href);
+      toastAction.style.display = "inline-flex";
+    } else {
+      toast.classList.remove("has-action");
+      toastAction.textContent = "ACTION";
+      toastAction.setAttribute("href", "#");
+      toastAction.style.display = "none";
+    }
+
+    toast.classList.add("show");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+  }
+
+  document.querySelectorAll(".js-login-required").forEach((btn)=>{
+    btn.addEventListener("click", ()=>{
+      const url = btn.getAttribute("data-login-url") || "/login";
+      showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:url });
     });
   });
 });
