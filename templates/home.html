@@ -1,1118 +1,660 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="{{ lang_code }}">
 <head>
-<meta charset="UTF-8">
-<title>The Outfit - Lookbook</title>
-<style>
-:root{
-  --bg:#050507;
-  --card:#0b0c10;
-  --border:rgba(255,255,255,.08);
-  --text-main:#f5f5f4;
-  --text-soft:#a1a1aa;
-  --accent:#e6c27a;
-  --shadow: 0 30px 80px rgba(0,0,0,.9),0 0 0 1px rgba(255,255,255,.02);
-  --ease: cubic-bezier(.2,.8,.2,1);
-}
-*{box-sizing:border-box;}
-html,body{height:100%;}
-body{
-  margin:0;
-  background:radial-gradient(circle at top,#20202a 0,#050507 40%),#050507;
-  color:var(--text-main);
-  font-family:-apple-system,BlinkMacSystemFont,"Noto Sans JP",system-ui,sans-serif;
-}
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>{{ t('site_name') }} - {{ t('ranked_looks') }}</title>
+  <style>
+    :root{
+      --bg:#07070a;
+      --panel:rgba(255,255,255,.06);
+      --panel2:rgba(255,255,255,.08);
+      --line:rgba(255,255,255,.14);
+      --text:#fff;
+      --muted:rgba(255,255,255,.68);
+      --muted2:rgba(255,255,255,.52);
+      --accent:rgba(255,255,255,.92);
+      --accent2:rgba(255,255,255,.72);
+      --danger:#ff2d72;
+      --radius:20px;
+      --shadow:0 18px 50px rgba(0,0,0,.55);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif;
+      background:
+        radial-gradient(1200px 600px at 15% -10%, rgba(255,255,255,.10), transparent 60%),
+        radial-gradient(900px 500px at 85% 0%, rgba(255,255,255,.07), transparent 55%),
+        radial-gradient(700px 400px at 60% 110%, rgba(124,60,255,.08), transparent 55%),
+        var(--bg);
+      color:var(--text);
+    }
+    a{color:inherit}
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      display:flex; align-items:center; justify-content:space-between;
+      padding:18px 22px;
+      backdrop-filter: blur(10px);
+      background: linear-gradient(to bottom, rgba(0,0,0,.72), rgba(0,0,0,.35));
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    .brand{display:flex; flex-direction:column; gap:2px}
+    .brand-mark{font-weight:800; letter-spacing:.18em; font-size:12px; color:rgba(255,255,255,.9)}
+    .brand-title{font-weight:650; letter-spacing:.08em; font-size:12px; color:rgba(255,255,255,.55); text-transform:uppercase}
+    .nav-right{display:flex; align-items:center; gap:12px; font-size:13px}
+    .nav-right a{color:rgba(255,255,255,.86); text-decoration:none}
+    .nav-right a:hover{color:#fff; text-decoration:underline}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.05);
+    }
+    .lang{font-size:12px;color:rgba(255,255,255,.75);white-space:nowrap}
+    .lang a{color:rgba(255,255,255,.85);text-decoration:none}
+    .lang a:hover{color:#fff;text-decoration:underline}
 
-.topbar{
-  position:sticky;top:0;z-index:10;
-  background:rgba(5,5,7,.96);
-  backdrop-filter:blur(14px);
-  border-bottom:1px solid rgba(255,255,255,.06);
-  padding:12px 28px;
-  display:flex;justify-content:space-between;align-items:center;
-}
-.brand{display:flex;flex-direction:column;}
-.brand-mark{font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--text-soft);}
-.brand-title{font-size:20px;letter-spacing:.22em;text-transform:uppercase;}
+    .btn{
+      appearance:none; border:1px solid rgba(255,255,255,.16);
+      border-radius:999px; padding:9px 12px;
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.92);
+      font-weight:650; cursor:pointer;
+    }
+    .btn:hover{background:rgba(255,255,255,.10)}
+    .btn-primary{
+      background:#fff; color:#000; border-color:transparent;
+    }
+    .btn-primary:hover{filter:brightness(.95)}
+    .btn-logout{background:transparent}
 
-.nav-right{
-  font-size:11px;color:var(--text-soft);text-align:right;
-  display:flex;flex-direction:column;gap:8px;align-items:flex-end;
-}
-.nav-right a{
-  color:var(--accent);text-decoration:none;margin-left:14px;
-  border-bottom:1px solid transparent;padding-bottom:1px;
-  transition:border-color .2s var(--ease), opacity .2s var(--ease);
-}
-.nav-right a:hover{border-bottom-color:var(--accent);opacity:.9;}
+    .container{width:min(1100px, 92vw); margin:0 auto; padding:28px 0 70px}
+    .hero{
+      margin:18px 0 22px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:var(--radius);
+      background:linear-gradient(140deg, rgba(255,255,255,.09), rgba(255,255,255,.03));
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .hero-inner{
+      padding:22px 22px 18px;
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+    }
+    @media (max-width:900px){
+      .hero-inner{grid-template-columns:1fr}
+    }
+    .kicker{font-size:12px; letter-spacing:.18em; color:rgba(255,255,255,.62)}
+    .hero h1{
+      margin:10px 0 10px;
+      font-size:32px; letter-spacing:.02em; line-height:1.12;
+    }
+    .hero p{margin:0; color:rgba(255,255,255,.72); font-size:14px; line-height:1.7}
+    .hero .cta{display:flex; flex-wrap:wrap; gap:10px; margin-top:14px}
+    .steps{
+      display:grid; gap:10px; align-content:start;
+      padding:18px;
+      border-left:1px solid rgba(255,255,255,.10);
+      background:rgba(0,0,0,.20);
+    }
+    @media (max-width:900px){
+      .steps{border-left:0; border-top:1px solid rgba(255,255,255,.10)}
+    }
+    .step{
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      border-radius:16px;
+      padding:12px 12px;
+    }
+    .step .n{font-size:11px; letter-spacing:.18em; color:rgba(255,255,255,.55)}
+    .step .t{margin-top:6px; font-weight:750; letter-spacing:.06em}
 
-.container{max-width:1120px;margin:22px auto 40px;padding:0 24px;}
-.header-row{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:18px;}
-.header-row h2{margin:0;font-size:16px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;}
-.header-row .sub{font-size:11px;color:var(--text-soft);}
+    .header-row{display:flex; align-items:flex-end; justify-content:space-between; gap:14px; margin:20px 0 12px}
+    .header-row h2{margin:0; font-size:18px; letter-spacing:.10em}
+    .sub{color:var(--muted); font-size:12px; letter-spacing:.10em; text-transform:uppercase}
 
-/* ===== Intro panel (editorial, luxe, lightweight) ===== */
-.intro{
-  margin:0 0 18px 0;
-  padding:14px 16px 14px 16px;
-  border-radius:18px;
-  border:1px solid rgba(255,255,255,.10);
-  background:
-    radial-gradient(1200px 240px at 10% 0%, rgba(230,194,122,.10), transparent 60%),
-    radial-gradient(900px 260px at 90% 0%, rgba(255,255,255,.06), transparent 58%),
-    rgba(255,255,255,.04);
-  box-shadow:0 28px 90px rgba(0,0,0,.65);
-  backdrop-filter:blur(10px);
-  overflow:hidden;
-}
-.intro-top{
-  display:flex;
-  gap:14px;
-  align-items:flex-start;
-  justify-content:space-between;
-  flex-wrap:wrap;
-}
-.intro-kicker{
-  font-size:10px;
-  letter-spacing:.28em;
-  text-transform:uppercase;
-  color:rgba(255,255,255,.72);
-}
-.intro-title{
-  margin:6px 0 0 0;
-  font-size:18px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  font-weight:650;
-}
-.intro-desc{
-  margin:8px 0 0 0;
-  color:rgba(255,255,255,.76);
-  font-size:12px;
-  line-height:1.65;
-}
-.intro-steps{
-  margin:10px 0 0 0;
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-}
-.step-pill{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:7px 10px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(0,0,0,.22);
-  color:rgba(255,255,255,.82);
-  font-size:10px;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-}
-.step-pill b{
-  font-weight:800;
-  color:rgba(230,194,122,.92);
-  letter-spacing:.18em;
-}
-.intro-actions{
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  align-items:center;
-  justify-content:flex-end;
-  margin-top:8px;
-}
-.intro-actions .btn{
-  padding:7px 12px;
-}
-.intro-actions .ghost{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  padding:7px 12px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(0,0,0,.20);
-  color:rgba(255,255,255,.78);
-  font-size:10px;
-  font-weight:750;
-  letter-spacing:.16em;
-  text-transform:uppercase;
-  text-decoration:none;
-  transition:opacity .18s var(--ease), transform .18s var(--ease);
-}
-.intro-actions .ghost:hover{opacity:.95;}
-.intro-actions .ghost:active{transform:translateY(1px) scale(.99);}
+    .note{
+      margin:14px 0 18px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(0,0,0,.22);
+      color:rgba(255,255,255,.80);
+      font-size:13px;
+    }
 
-/* collapsible details, but styled like editorial */
-.intro details{
-  margin-top:10px;
-  border-top:1px solid rgba(255,255,255,.08);
-  padding-top:10px;
-}
-.intro summary{
-  list-style:none;
-  cursor:pointer;
-  user-select:none;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  color:rgba(255,255,255,.76);
-  font-size:10px;
-  letter-spacing:.24em;
-  text-transform:uppercase;
-}
-.intro summary::-webkit-details-marker{display:none;}
-.intro summary .chev{
-  color:rgba(230,194,122,.85);
-  letter-spacing:.10em;
-  transform:rotate(0deg);
-  transition:transform .18s var(--ease), opacity .18s var(--ease);
-  opacity:.9;
-}
-.intro details[open] summary .chev{transform:rotate(180deg); opacity:1;}
-.intro-more{
-  margin-top:10px;
-  color:rgba(255,255,255,.74);
-  font-size:12px;
-  line-height:1.7;
-}
-.intro-more ul{
-  margin:8px 0 0 0;
-  padding:0 0 0 16px;
-}
-.intro-more li{
-  margin:6px 0;
-}
-@media (max-width:768px){
-  .intro-title{font-size:16px;}
-  .intro{padding:14px 14px;}
-}
-/* ===== /Intro ===== */
+    .posts{
+      display:grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap:16px;
+    }
+    @media (max-width:980px){ .posts{grid-template-columns:repeat(2,1fr)} }
+    @media (max-width:640px){ .posts{grid-template-columns:1fr} }
 
-.posts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;}
-.post{border-radius:22px;overflow:hidden;}
-.post-inner{
-  position:relative;
-  background:var(--card);
-  border-radius:22px;
-  border:1px solid var(--border);
-  box-shadow:var(--shadow);
-  padding:10px;
-  height:100%;
-  display:flex;flex-direction:column;
-  transform:translateZ(0);
-  transition:transform .35s var(--ease), box-shadow .35s var(--ease), border-color .35s var(--ease);
-}
-.post-inner:hover{
-  transform:translateY(-4px);
-  border-color:rgba(230,194,122,.22);
-  box-shadow: 0 40px 120px rgba(0,0,0,.92), 0 0 0 1px rgba(230,194,122,.08);
-}
-.post-inner::before{
-  content:"";
-  position:absolute;inset:-1px;
-  border-radius:22px;
-  pointer-events:none;
-  background:linear-gradient(120deg, transparent 0%, rgba(230,194,122,.06) 20%, transparent 40%);
-  transform:translateX(-60%);
-  opacity:0;
-  transition:opacity .3s var(--ease);
-}
-.post-inner:hover::before{opacity:1;animation:sweep 1.2s var(--ease) 1;}
-@keyframes sweep{0%{transform:translateX(-60%);}100%{transform:translateX(60%);} }
+    .post{
+      position:relative;
+      border-radius:var(--radius);
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      overflow:hidden;
+      box-shadow:0 16px 40px rgba(0,0,0,.55);
+      transform:translateZ(0);
+    }
+    .post-inner{position:relative}
+    .post-img-wrap{position:relative; aspect-ratio: 4/5; background:rgba(0,0,0,.45)}
+    .post-img{
+      width:100%; height:100%;
+      object-fit:cover;
+      display:block;
+      filter:saturate(1.05) contrast(1.03);
+      cursor:zoom-in;
+      transition:transform .35s ease, filter .35s ease;
+    }
+    .post:hover .post-img{transform:scale(1.02)}
+    .meta{
+      padding:14px 14px 16px;
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .meta-top{display:flex; justify-content:space-between; align-items:flex-start; gap:10px}
+    .by{color:var(--muted); font-size:12px}
+    .title{
+      font-weight:700;
+      letter-spacing:.02em;
+      font-size:13px;
+      color:rgba(255,255,255,.92);
+      line-height:1.35;
+      margin-top:4px;
+    }
+    .counts{
+      display:flex; align-items:center; gap:10px; color:rgba(255,255,255,.80);
+      font-size:12px;
+    }
+    .dot{opacity:.55}
 
-.post-img-wrap{
-  position:relative;
-  border-radius:18px;overflow:hidden;margin-bottom:10px;
-  aspect-ratio:4/5;
-  background:#050507;
-  transform:translateZ(0);
-}
+    .vote-row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .vote-btn{
+      padding:10px 12px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background:rgba(255,255,255,.06);
+      color:rgba(255,255,255,.92);
+      font-weight:750;
+      letter-spacing:.10em;
+      cursor:pointer;
+      transition:background .25s ease, transform .12s ease;
+    }
+    .vote-btn:hover{background:rgba(255,255,255,.10)}
+    .vote-btn:active{transform:translateY(1px)}
+    .vote-btn.primary{
+      background:#fff;
+      color:#000;
+      border-color:transparent;
+    }
 
-/* purple overlay (unvote) */
-.post-img-wrap::after{
-  content:"";
-  position:absolute;inset:0;
-  pointer-events:none;
-  opacity:0;
-  z-index:40;
-}
+    .sparkle-canvas{
+      position:absolute;
+      inset:0;
+      width:100%;
+      height:100%;
+      pointer-events:none;
+      opacity:0;
+      transition:opacity .25s ease;
+      mix-blend-mode:screen;
+    }
+    .sparkle-active .sparkle-canvas{opacity:1}
 
-/* Canvas: luxe snowfall */
-.sparkle-canvas{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
-  pointer-events:none;
-  z-index:60;
-  mix-blend-mode:screen;
-}
+    /* unvote dim: dark purple sink */
+    .dimmed .post-img{filter:saturate(.75) brightness(.70) contrast(1.02) hue-rotate(250deg)}
+    .dimmed .post{background:rgba(90,40,140,.10)}
+    .dim-overlay{
+      position:absolute; inset:0;
+      pointer-events:none;
+      background:radial-gradient(600px 360px at 50% 30%, rgba(170,80,255,.12), rgba(0,0,0,0) 55%),
+                 linear-gradient(to bottom, rgba(60,0,120,.10), rgba(0,0,0,.18));
+      opacity:0;
+      transition:opacity .6s ease;
+    }
+    .dimmed .dim-overlay{opacity:1}
 
-/* image itself */
-.post-img-wrap img{
-  position:relative;
-  z-index:10;
-  width:100%;height:100%;
-  object-fit:cover;
-  display:block;
-  cursor:pointer;
-  transform:scale(1);
-  transition:transform .6s var(--ease), filter .6s var(--ease);
-  will-change:transform, filter;
-}
-.post-inner:hover .post-img-wrap img{
-  transform:scale(1.03);
-  filter:saturate(1.05) contrast(1.02);
-}
+    /* toast */
+    .toast{
+      position:fixed;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%) translateY(10px);
+      background:rgba(0,0,0,.70);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      padding:10px 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      z-index:999;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .22s ease, transform .22s ease;
+      backdrop-filter:blur(10px);
+      box-shadow:0 18px 60px rgba(0,0,0,.55);
+    }
+    .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+    .toast .k{font-weight:800; letter-spacing:.12em; font-size:11px}
+    .toast .m{color:rgba(255,255,255,.80); font-size:12px}
 
-/* meta */
-.post-meta{display:flex;justify-content:space-between;align-items:flex-end;font-size:11px;margin-top:4px;}
-.post-user{font-weight:500;letter-spacing:.04em;}
-.post-votes{color:var(--text-soft);letter-spacing:.08em;text-transform:uppercase;}
-.count-pop{animation:countPop .34s var(--ease) 1;}
-@keyframes countPop{
-  0%{transform:translateY(2px);opacity:.65;}
-  60%{transform:translateY(-3px);opacity:1;}
-  100%{transform:translateY(0);opacity:1;}
-}
+    /* modal */
+    .modal{
+      position:fixed; inset:0;
+      background:rgba(0,0,0,.88);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:200;
+      padding:18px;
+    }
+    .modal.show{display:flex}
+    .modal img{
+      max-width:min(92vw, 1000px);
+      max-height:88vh;
+      object-fit:contain;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow:0 22px 90px rgba(0,0,0,.65);
+    }
+    .modal .hint{
+      position:absolute;
+      bottom:18px;
+      left:50%;
+      transform:translateX(-50%);
+      color:rgba(255,255,255,.70);
+      font-size:12px;
+      letter-spacing:.12em;
+      text-transform:uppercase;
+    }
+    .inline{display:inline}
+    form.inline{display:inline}
 
-/* actions */
-.actions{margin-top:8px;display:flex;gap:8px;align-items:center;min-height:28px;}
-.btn{
-  display:inline-flex;align-items:center;justify-content:center;
-  padding:6px 12px;border-radius:999px;
-  font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
-  border:1px solid var(--accent);
-  cursor:pointer;
-  transition:transform .18s var(--ease), background .25s var(--ease), color .25s var(--ease), opacity .25s var(--ease);
-  position:relative;
-  user-select:none;
-}
-.btn:active{transform:translateY(1px) scale(.99);}
-.btn-vote{background:transparent;color:var(--accent);text-decoration:none;}
-.btn-unvote{background:var(--accent);color:#050507;text-decoration:none;}
-.btn-logout{background:transparent;color:var(--accent);border:1px solid var(--accent);}
-.btn::after{
-  content:"";
-  position:absolute;inset:0;border-radius:999px;
-  background:linear-gradient(120deg, transparent 0%, rgba(255,255,255,.22) 18%, transparent 36%);
-  transform:translateX(-80%);
-  opacity:0;
-  pointer-events:none;
-}
-.btn:hover::after{opacity:.9;animation:btnSweep 1.05s var(--ease) 1;}
-@keyframes btnSweep{0%{transform:translateX(-80%);}100%{transform:translateX(80%);} }
-.btn-loading{opacity:.65;cursor:progress;pointer-events:none;}
-
-/* card flash */
-.vote-flash{animation:voteFlash .55s var(--ease) 1;}
-@keyframes voteFlash{
-  0%{box-shadow:var(--shadow);border-color:rgba(230,194,122,.12);}
-  45%{box-shadow: 0 55px 160px rgba(0,0,0,.95), 0 0 0 1px rgba(230,194,122,.18), 0 0 64px rgba(230,194,122,.14);border-color:rgba(230,194,122,.55);}
-  100%{box-shadow:var(--shadow);border-color:var(--border);}
-}
-
-/* VOTE: 画像も上品に少しだけ */
-.post-inner.vote-stars .post-img-wrap img{
-  filter:saturate(1.06) contrast(1.02) brightness(1.015);
-}
-
-/* ribbons/stamps */
-.ribbon{
-  position:absolute;
-  left:14px; top:14px;
-  display:inline-flex; align-items:center; gap:8px;
-  padding:8px 12px;
-  border-radius:999px;
-  border:1px solid rgba(230,194,122,.45);
-  background:rgba(230,194,122,.20);
-  color:rgba(245,245,244,.96);
-  font-size:11px;
-  letter-spacing:.22em;
-  text-transform:uppercase;
-  backdrop-filter:blur(10px);
-  box-shadow:0 18px 60px rgba(0,0,0,.55);
-  transform:translateY(10px) scale(.98);
-  opacity:0;
-  pointer-events:none;
-  animation:ribbonIn 1200ms var(--ease) 1;
-  z-index:80;
-}
-.ribbon .dot{
-  width:8px;height:8px;border-radius:50%;
-  background:var(--accent);
-  box-shadow:0 0 0 7px rgba(230,194,122,.22), 0 0 28px rgba(230,194,122,.22);
-}
-@keyframes ribbonIn{
-  0%{opacity:0; transform:translateY(14px) scale(.98);}
-  18%{opacity:1; transform:translateY(0) scale(1);}
-  78%{opacity:1;}
-  100%{opacity:0; transform:translateY(-8px) scale(1.01);}
-}
-
-.stamp{
-  position:absolute;
-  right:14px; top:14px;
-  padding:10px 14px;
-  border-radius:14px;
-  border:1px solid rgba(255,255,255,.14);
-  background:rgba(5,5,7,.52);
-  color:rgba(245,245,244,.92);
-  font-size:12px;
-  letter-spacing:.24em;
-  text-transform:uppercase;
-  backdrop-filter:blur(10px);
-  box-shadow:0 18px 60px rgba(0,0,0,.60);
-  transform:rotate(-10deg) translateY(12px) scale(.98);
-  opacity:0;
-  pointer-events:none;
-  animation:stampIn 1300ms ease-in-out 1;
-  z-index:80;
-}
-@keyframes stampIn{
-  0%{opacity:0; transform:rotate(-10deg) translateY(18px) scale(.98);}
-  18%{opacity:1; transform:rotate(-10deg) translateY(0) scale(1);}
-  80%{opacity:1;}
-  100%{opacity:0; transform:rotate(-10deg) translateY(-10px) scale(1.01);}
-}
-
-/* UNVOTE purple */
-.post-inner.unvote-purple .post-img-wrap::after{
-  background:
-    radial-gradient(circle at 50% 50%, rgba(62,14,110,.52), rgba(16,4,38,.74)),
-    radial-gradient(circle at 50% 50%, transparent 40%, rgba(0,0,0,.60) 100%),
-    linear-gradient(180deg, rgba(70,18,125,.12), rgba(0,0,0,.56));
-  mix-blend-mode:multiply;
-  animation:purpleFade 1500ms ease-in-out 1;
-  animation-fill-mode:both;
-}
-.post-inner.unvote-purple .post-img-wrap img{
-  animation:purpleImg 1500ms ease-in-out 1;
-  animation-fill-mode:both;
-}
-@keyframes purpleFade{0%{opacity:0;}55%{opacity:1;}100%{opacity:0;}}
-@keyframes purpleImg{0%{filter:none;}55%{filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64);}100%{filter:none;}}
-
-/* misc */
-.note{margin-top:10px;color:var(--text-soft);font-size:11px;}
-.empty{margin-top:40px;text-align:center;font-size:13px;color:var(--text-soft);}
-@media (max-width:768px){.container{padding:0 16px;}.posts{grid-template-columns:1fr;gap:20px;}}
-
-/* lookbook */
-.lookbook-overlay{
-  position:fixed;inset:0;padding:24px;
-  background:rgba(5,5,7,.92);
-  backdrop-filter:blur(10px);
-  display:flex;justify-content:center;align-items:center;
-  opacity:0;pointer-events:none;
-  transition:opacity .22s var(--ease);
-  z-index:999;
-}
-.lookbook-overlay.show{opacity:1;pointer-events:auto;}
-.lookbook-inner{
-  width:100%;height:100%;
-  display:flex;flex-direction:column;
-  justify-content:center;align-items:center;
-  gap:10px;
-  transform:scale(.985);
-  transition:transform .28s var(--ease);
-}
-.lookbook-overlay.show .lookbook-inner{transform:scale(1);}
-.lookbook-image-wrap{
-  width:min(92vw, 1100px);
-  height:auto;
-  max-height:calc(100vh - 160px);
-  display:flex;justify-content:center;align-items:center;
-  overflow:hidden;
-  border-radius:20px;
-  border:1px solid rgba(255,255,255,0.12);
-  box-shadow:0 45px 140px rgba(0,0,0,0.92);
-  background:#050507;
-}
-.lookbook-image-wrap img{
-  display:block;
-  width:100%;
-  height:auto;
-  max-height:calc(100vh - 160px);
-  object-fit:contain;
-  image-rendering:auto;
-}
-.lookbook-credit{font-size:11px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.12em;text-align:center;}
-.lookbook-hint{margin-top:2px;font-size:10px;color:var(--text-soft);text-align:center;}
-@media (max-width:768px){
-  .lookbook-overlay{padding:16px;}
-  .lookbook-image-wrap{width:min(94vw, 980px); max-height:calc(100vh - 140px);}
-  .lookbook-image-wrap img{max-height:calc(100vh - 140px);}
-}
-
-/* toast */
-.toast{
-  position:fixed;
-  right:18px;
-  bottom:18px;
-  background:rgba(11,12,16,.90);
-  border:1px solid rgba(255,255,255,.10);
-  border-radius:14px;
-  padding:10px 12px;
-  box-shadow:0 30px 80px rgba(0,0,0,.7);
-  backdrop-filter:blur(10px);
-  color:var(--text-main);
-  font-size:11px;
-  letter-spacing:.08em;
-  opacity:0;
-  transform:translateY(10px);
-  pointer-events:none;
-  transition:opacity .22s var(--ease), transform .22s var(--ease);
-  z-index:1000;
-  max-width:min(360px, calc(100vw - 36px));
-}
-.toast.show{opacity:1;transform:translateY(0);pointer-events:auto;}
-.toast .row{display:flex;align-items:center;gap:10px;justify-content:space-between;}
-.toast .text{min-width:0;}
-.toast .small{display:block;color:var(--text-soft);font-size:10px;letter-spacing:.06em;margin-top:2px;white-space:normal;}
-.toast .action{
-  flex:0 0 auto;
-  display:none;
-  text-decoration:none;
-  color:#050507;
-  background:var(--accent);
-  border:1px solid rgba(230,194,122,.65);
-  padding:7px 10px;
-  border-radius:999px;
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  transition:transform .18s var(--ease), opacity .18s var(--ease);
-}
-.toast .action:hover{opacity:.95;}
-.toast .action:active{transform:translateY(1px) scale(.99);}
-.toast.has-action .action{display:inline-flex;align-items:center;justify-content:center;}
-.toast .action:focus{outline:2px solid rgba(230,194,122,.55);outline-offset:2px;}
-
-form.inline{display:inline;margin:0;}
-
-@media (prefers-reduced-motion: reduce){
-  .post-inner{transition:none !important;}
-  .post-inner:hover{transform:none !important;}
-  .post-inner.unvote-purple .post-img-wrap::after{animation:none !important; opacity:1 !important;}
-  .post-inner.unvote-purple .post-img-wrap img{animation:none !important; filter:grayscale(.25) saturate(.50) contrast(.98) brightness(.64) !important;}
-}
-</style>
+    .empty{
+      margin:22px 0;
+      padding:18px 16px;
+      border-radius:18px;
+      border:1px solid rgba(255,255,255,.12);
+      background:rgba(255,255,255,.05);
+      color:rgba(255,255,255,.78);
+      font-size:14px;
+      line-height:1.6;
+    }
+  </style>
 </head>
 <body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark">THE OUTFIT</div>
+      <div class="brand-title">{{ t('lookbook') }}</div>
+    </div>
 
-<div class="topbar">
-  <div class="brand">
-    <div class="brand-mark">THE OUTFIT</div>
-    <div class="brand-title">LOOKBOOK</div>
-  </div>
+    <div class="nav-right">
+      <div class="lang">
+        <a href="{{ set_lang_url('ja') }}">日本語</a> / <a href="{{ set_lang_url('en') }}">EN</a>
+      </div>
 
-  <div class="nav-right">
-    {% if is_logged_in %}
-      <div>{{ user }}</div>
-      <div>
-        <a href="{{ url_for('upload') }}">UPLOAD</a>
+      {% if is_logged_in %}
+        <div class="pill">
+          <span style="color:rgba(255,255,255,.55);font-size:11px;letter-spacing:.12em">{{ t('guest') }}</span>
+          <span style="font-weight:700">{{ user }}</span>
+        </div>
+        <a class="btn btn-primary" href="{{ url_for('upload') }}">{{ t('upload') }}</a>
         <form class="inline" method="post" action="{{ url_for('logout') }}">
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-          <button class="btn btn-logout" type="submit">LOGOUT</button>
+          <button class="btn btn-logout" type="submit">{{ t('logout') }}</button>
         </form>
-      </div>
-    {% else %}
-      <div>GUEST</div>
-      <div>
-        <a href="{{ url_for('login', next='/') }}">LOGIN</a>
-        <a href="{{ url_for('register') }}">REGISTER</a>
-      </div>
-    {% endif %}
-  </div>
-</div>
-
-<div class="container">
-  <div class="header-row">
-    <h2>RANKED LOOKS</h2>
-    <div class="sub">CURATED BY VOTES · LIVE FEED</div>
+      {% else %}
+        <a class="btn" href="{{ url_for('login') }}">{{ t('login') }}</a>
+        <a class="btn btn-primary" href="{{ url_for('register') }}">{{ t('register') }}</a>
+      {% endif %}
+    </div>
   </div>
 
-  <!-- ★初見で「何のサイトか」分かる Intro（ハイブランド寄りに短く） -->
-  <section class="intro" aria-label="About The Outfit">
-    <div class="intro-top">
-      <div>
-        <div class="intro-kicker">EDITORIAL · COMMUNITY RANKING</div>
-        <div class="intro-title">POST OUTFITS. VOTE. RANK.</div>
-        <p class="intro-desc">
-          <b>The Outfit</b> は、世界中のファッション写真が集まる<strong>投票型ルックブック</strong>。<br>
-          見るだけならログイン不要。投票・投稿はログイン後にできます。
-        </p>
+  <div class="container">
 
-        <div class="intro-steps" aria-label="How it works">
-          <span class="step-pill"><b>1</b>UPLOAD</span>
-          <span class="step-pill"><b>2</b>VOTE</span>
-          <span class="step-pill"><b>3</b>TOP RANK</span>
+    <div class="hero">
+      <div class="hero-inner">
+        <div>
+          <div class="kicker">{{ t('intro_kicker') }}</div>
+          <h1>{{ t('intro_title') }}</h1>
+          <p>
+            <strong>THE OUTFIT</strong>
+            {% if lang_code == 'ja' %}
+              {{ t('intro_desc_1') }}<strong>{{ t('intro_desc_2') }}</strong>{{ t('intro_desc_3') }}
+            {% else %}
+              {{ t('intro_desc_1') }}
+              {{ t('intro_desc_3') }}
+            {% endif %}
+          </p>
+
+          <div class="note" style="margin-top:14px">
+            <div style="font-weight:800;letter-spacing:.10em;font-size:12px;margin-bottom:6px">{{ t('how_it_works') }}</div>
+            <div style="color:rgba(255,255,255,.78);font-size:13px;line-height:1.65">
+              <div style="margin-bottom:6px"><strong>{{ t('can_do') }}</strong></div>
+              <div>• {{ t('can_view') }}</div>
+              <div>• {{ t('can_vote') }}</div>
+              <div>• {{ t('can_post') }}</div>
+            </div>
+          </div>
+
+          <div class="cta">
+            <a class="btn btn-primary" href="#ranking">{{ t('view_ranking') }}</a>
+            {% if not is_logged_in %}
+              <a class="btn" href="{{ url_for('login', next='/') }}">{{ t('login') }}</a>
+            {% else %}
+              <a class="btn" href="{{ url_for('upload') }}">{{ t('upload') }}</a>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="steps">
+          <div class="step">
+            <div class="n">STEP 01</div>
+            <div class="t">{{ t('step_1') }}</div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 02</div>
+            <div class="t">{{ t('step_2') }}</div>
+          </div>
+          <div class="step">
+            <div class="n">STEP 03</div>
+            <div class="t">{{ t('step_3') }}</div>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="intro-actions" aria-label="Primary actions">
-        {% if is_logged_in %}
-          <a class="btn btn-unvote" href="{{ url_for('upload') }}">UPLOAD</a>
-          <a class="ghost" href="{{ url_for('index') }}">VIEW RANKING</a>
+    <div id="ranking" class="header-row">
+      <h2>{{ t('ranked_looks') }}</h2>
+      <div class="sub">{{ t('curated_by_votes') }}</div>
+    </div>
+
+    {% if not is_logged_in %}
+      <div class="note">
+        {% if lang_code == 'ja' %}
+          投票・投稿は <a href="{{ url_for('login', next='/') }}" style="color:rgba(255,255,255,.92);text-decoration:underline">ログイン</a> 後にできます。
         {% else %}
-          <a class="btn btn-unvote" href="{{ url_for('register') }}">REGISTER</a>
-          <a class="ghost" href="{{ url_for('login', next='/') }}">LOGIN</a>
+          <a href="{{ url_for('login', next='/') }}" style="color:rgba(255,255,255,.92);text-decoration:underline">Login</a> to vote and post.
         {% endif %}
       </div>
-    </div>
+    {% endif %}
 
-    <details>
-      <summary>
-        WHAT IS THIS SITE?
-        <span class="chev">▾</span>
-      </summary>
-      <div class="intro-more">
-        <div>このサイトでできること：</div>
-        <ul>
-          <li><b>ランキング閲覧</b>：誰でもOK（ログイン不要）</li>
-          <li><b>投票</b>：ログイン必須（1人1票・取消可）</li>
-          <li><b>投稿</b>：ログイン必須（あなたの“今日の一枚”を世界へ）</li>
-        </ul>
+    {% if posts %}
+      <div class="posts">
+        {% for p in posts %}
+          {% set voted = (p['id'] in voted_ids) %}
+          <div class="post {% if voted %}sparkle-active{% endif %}" data-post-id="{{ p['id'] }}" id="post-{{ p['id'] }}">
+            <div class="post-inner" id="card-{{ p['id'] }}">
+              <div class="post-img-wrap">
+                <img class="post-img"
+                     src="{{ url_for('uploaded_file', filename=p['filename']) }}"
+                     alt="outfit {{ p['id'] }}"
+                     data-full="{{ url_for('uploaded_file', filename=p['filename']) }}">
+                <canvas class="sparkle-canvas" id="sparkle-{{ p['id'] }}"></canvas>
+                <div class="dim-overlay"></div>
+              </div>
+
+              <div class="meta">
+                <div class="meta-top">
+                  <div>
+                    <div class="by">
+                      by <span style="color:rgba(255,255,255,.88)">{{ p['user'] }}</span>
+                    </div>
+                    {% if p['title'] %}
+                      <div class="title">{{ p['title'] }}</div>
+                    {% endif %}
+                  </div>
+                  <div class="counts">
+                    <span id="votes-{{ p['id'] }}">{{ p['votes'] }}</span>
+                    <span class="dot">•</span>
+                    <span>{% if lang_code == 'ja' %}票{% else %}votes{% endif %}</span>
+                  </div>
+                </div>
+
+                <div class="vote-row">
+                  <button
+                    class="vote-btn {% if voted %}primary{% endif %}"
+                    data-action="{% if voted %}unvote{% else %}vote{% endif %}"
+                    data-post-id="{{ p['id'] }}"
+                    type="button">
+                    {% if voted %}{{ t('remove_vote') }}{% else %}{{ t('vote') }}{% endif %}
+                  </button>
+
+                  <div style="color:rgba(255,255,255,.55);font-size:11px;letter-spacing:.12em">
+                    #{{ loop.index }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
       </div>
-    </details>
-  </section>
-
-  {% if posts %}
-  <div class="posts">
-    {% for p in posts %}
-    <div class="post" data-post-id="{{ p['id'] }}">
-      <div class="post-inner" id="card-{{ p['id'] }}">
-        <div class="post-img-wrap">
-          <img
-            src="{{ url_for('uploaded_file', filename=p['filename']) }}"
-            class="look-img"
-            data-user="{{ p['user'] }}"
-            data-votes="{{ p['votes'] }}"
-            alt="outfit"
-            loading="lazy"
-          >
-        </div>
-
-        <div class="post-meta">
-          <div class="post-user">{{ p['user'] }}</div>
-          <div class="post-votes" id="votes-{{ p['id'] }}">{{ p['votes'] }} VOTES</div>
-        </div>
-
-        <div class="actions" id="actions-{{ p['id'] }}">
-          {% if is_logged_in %}
-            {% if p['id'] in voted_ids %}
-              <form class="inline vote-form"
-                    method="post"
-                    action="{{ url_for('unvote', post_id=p['id']) }}"
-                    data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
-                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn btn-unvote" type="submit">REMOVE VOTE</button>
-              </form>
-            {% else %}
-              <form class="inline vote-form"
-                    method="post"
-                    action="{{ url_for('vote', post_id=p['id']) }}"
-                    data-vote-url="{{ url_for('vote', post_id=p['id']) }}"
-                    data-unvote-url="{{ url_for('unvote', post_id=p['id']) }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button class="btn btn-vote" type="submit">VOTE</button>
-              </form>
-            {% endif %}
-          {% else %}
-            <!-- 未ログイン：飛ばさず、トーストで上品に誘導 -->
-            <button
-              type="button"
-              class="btn btn-vote js-login-required"
-              data-login-url="{{ url_for('login', next='/') }}"
-              aria-label="Login required to vote"
-            >VOTE</button>
-          {% endif %}
-        </div>
-      </div>
-    </div>
-    {% endfor %}
+    {% else %}
+      <div class="empty">{{ t('no_looks') }}</div>
+    {% endif %}
   </div>
-  {% else %}
-    <p class="empty">No looks yet. Be the first to curate your page.</p>
-  {% endif %}
-</div>
 
-<div class="lookbook-overlay" id="lookbookOverlay">
-  <div class="lookbook-inner">
-    <div class="lookbook-image-wrap">
-      <img id="lookbookImage" src="" alt="look">
-    </div>
-    <div class="lookbook-credit" id="lookbookCredit"></div>
-    <div class="lookbook-hint">CLICK ANYWHERE TO CLOSE</div>
+  <div class="toast" id="toast">
+    <div class="k" id="toastK">OK</div>
+    <div class="m" id="toastM">Done</div>
   </div>
-</div>
 
-<!-- トースト（アクションボタン付き） -->
-<div class="toast" id="toast" role="status" aria-live="polite">
-  <div class="row">
-    <div class="text">
-      <span id="toastMain">UPDATED</span>
-      <span class="small" id="toastSub">Your lookbook is live.</span>
-    </div>
-    <a id="toastAction" class="action" href="#">ACTION</a>
+  <div class="modal" id="modal">
+    <img id="modalImg" alt="full">
+    <div class="hint">{{ t('close_hint') }}</div>
   </div>
-</div>
 
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  // Lookbook
-  const imgs = document.querySelectorAll(".look-img");
-  const overlay = document.getElementById("lookbookOverlay");
-  const overlayImg = document.getElementById("lookbookImage");
-  const overlayCredit = document.getElementById("lookbookCredit");
+  <script>
+    const CSRF = "{{ csrf_token() }}";
 
-  imgs.forEach(function (img) {
-    img.addEventListener("click", function () {
-      overlayImg.src = img.getAttribute("src");
-      const user = img.getAttribute("data-user") || "";
-      const votes = img.getAttribute("data-votes") || "";
-      overlayCredit.textContent = user + (votes !== "" ? " · " + votes + " VOTES" : "");
-      overlay.classList.add("show");
-    });
-  });
-  overlay.addEventListener("click", function () { overlay.classList.remove("show"); });
-
-  // Toast
-  const toast = document.getElementById("toast");
-  const toastMain = document.getElementById("toastMain");
-  const toastSub = document.getElementById("toastSub");
-  const toastAction = document.getElementById("toastAction");
-  let toastTimer = null;
-
-  function showToast(main, sub, action){
-    toastMain.textContent = main;
-    toastSub.textContent = sub;
-
-    if (action && action.label && action.href){
-      toast.classList.add("has-action");
-      toastAction.textContent = action.label;
-      toastAction.setAttribute("href", action.href);
-      toastAction.style.display = "inline-flex";
-    } else {
-      toast.classList.remove("has-action");
-      toastAction.textContent = "ACTION";
-      toastAction.setAttribute("href", "#");
-      toastAction.style.display = "none";
+    // ---------- toast ----------
+    let toastTimer = null;
+    function showToast(k, m) {
+      const el = document.getElementById("toast");
+      document.getElementById("toastK").textContent = k;
+      document.getElementById("toastM").textContent = m;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 1600);
     }
 
-    toast.classList.add("show");
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
-  }
-
-  // 未ログイン投票：上品に誘導
-  document.querySelectorAll(".js-login-required").forEach((btn)=>{
-    btn.addEventListener("click", ()=>{
-      const url = btn.getAttribute("data-login-url") || "/login";
-      showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:url });
+    // ---------- modal ----------
+    const modal = document.getElementById("modal");
+    const modalImg = document.getElementById("modalImg");
+    document.addEventListener("click", (e) => {
+      const img = e.target.closest(".post-img");
+      if (img) {
+        modalImg.src = img.dataset.full;
+        modal.classList.add("show");
+      }
     });
-  });
+    modal.addEventListener("click", () => {
+      modal.classList.remove("show");
+      modalImg.src = "";
+    });
 
-  // Helpers
-  function popCount(el){
-    if (!el) return;
-    el.classList.remove("count-pop");
-    void el.offsetWidth;
-    el.classList.add("count-pop");
-  }
-  function addOnce(el, cls, ms){
-    if (!el) return;
-    el.classList.remove(cls);
-    void el.offsetWidth;
-    el.classList.add(cls);
-    setTimeout(()=>el.classList.remove(cls), ms);
-  }
-  function addRibbon(card){
-    const r = document.createElement("div");
-    r.className = "ribbon";
-    r.innerHTML = '<span class="dot"></span>VOTED';
-    card.appendChild(r);
-    setTimeout(()=>r.remove(), 1250);
-  }
-  function addStamp(card){
-    const s = document.createElement("div");
-    s.className = "stamp";
-    s.textContent = "UNVOTED";
-    card.appendChild(s);
-    setTimeout(()=>s.remove(), 1350);
-  }
-  function rnd(min, max){ return min + Math.random() * (max - min); }
-  function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+    // ---------- powder-snow sparkle (high brand, subtle) ----------
+    function makeSparkle(canvas) {
+      const ctx = canvas.getContext("2d");
+      const DPR = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
 
-  function removeExistingCanvas(card){
-    const old = card.querySelector(".sparkle-canvas");
-    if (old) old.remove();
-  }
+      let W = 0, H = 0;
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        W = Math.max(1, Math.floor(rect.width));
+        H = Math.max(1, Math.floor(rect.height));
+        canvas.width = Math.floor(W * DPR);
+        canvas.height = Math.floor(H * DPR);
+        ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+      }
+      resize();
 
-  function createSparkleCanvas(imgWrap){
-    const canvas = document.createElement("canvas");
-    canvas.className = "sparkle-canvas";
-    imgWrap.appendChild(canvas);
-
-    const ctx = canvas.getContext("2d");
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-
-    const rect = imgWrap.getBoundingClientRect();
-    canvas.width = Math.floor(rect.width * dpr);
-    canvas.height = Math.floor(rect.height * dpr);
-    canvas.style.width = rect.width + "px";
-    canvas.style.height = rect.height + "px";
-    ctx.setTransform(dpr,0,0,dpr,0,0);
-
-    const w = rect.width;
-    const h = rect.height;
-
-    const onResize = () => {
-      const r = imgWrap.getBoundingClientRect();
-      canvas.width = Math.floor(r.width * dpr);
-      canvas.height = Math.floor(r.height * dpr);
-      canvas.style.width = r.width + "px";
-      canvas.style.height = r.height + "px";
-      ctx.setTransform(dpr,0,0,dpr,0,0);
-    };
-    window.addEventListener("resize", onResize, {passive:true});
-    setTimeout(()=>window.removeEventListener("resize", onResize), 2200);
-
-    return { canvas, ctx, w, h };
-  }
-
-  // Luxe Snowfall (High-brand)
-  function champagneColor(warm, a){
-    const w = clamp01(warm);
-    const r = Math.round(255*(1-w) + 230*w);
-    const g = Math.round(255*(1-w) + 194*w);
-    const b = Math.round(255*(1-w) + 122*w);
-    return `rgba(${r},${g},${b},${a})`;
-  }
-
-  function drawLuxeBokeh(ctx, x, y, r, a, warm, tilt){
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(tilt || 0);
-
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = a;
-
-    ctx.shadowBlur = r * 3.4;
-    ctx.shadowColor = champagneColor(warm, 1);
-
-    const outer = ctx.createRadialGradient(0,0,0, 0,0, r*3.2);
-    outer.addColorStop(0.00, champagneColor(warm*0.65, 0.85));
-    outer.addColorStop(0.25, champagneColor(warm, 0.35));
-    outer.addColorStop(0.65, champagneColor(warm, 0.12));
-    outer.addColorStop(1.00, champagneColor(warm, 0.0));
-
-    ctx.fillStyle = outer;
-    ctx.beginPath();
-    ctx.arc(0, 0, r*2.0, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.shadowBlur = r * 1.1;
-    ctx.fillStyle = champagneColor(warm, 0.55);
-    ctx.beginPath();
-    ctx.arc(0, 0, Math.max(0.75, r*0.38), 0, Math.PI*2);
-    ctx.fill();
-
-    if (a > 0.78){
-      ctx.globalAlpha = a * 0.26;
-      ctx.shadowBlur = r * 0.9;
-      ctx.lineWidth = 0.85;
-      ctx.strokeStyle = "rgba(255,255,255,0.65)";
-      const L = r * 5.8;
-      ctx.beginPath();
-      ctx.moveTo(-L, 0);
-      ctx.lineTo(L, 0);
-      ctx.stroke();
-    }
-
-    ctx.restore();
-  }
-
-  function runSparkle(card){
-    const imgWrap = card.querySelector(".post-img-wrap");
-    if (!imgWrap) return;
-
-    removeExistingCanvas(card);
-    const { canvas, ctx, w, h } = createSparkleCanvas(imgWrap);
-
-    const duration = 1350;
-    const countFar  = 18;
-    const countMid  = 22;
-    const countNear = 14;
-    const burstCount = 4;
-
-    const start = performance.now();
-
-    function makeLayer(n, layer){
-      const arr = [];
-      for (let i=0;i<n;i++){
-        const depth = (layer===0? 0.55 : layer===1? 0.85 : 1.10);
-        const baseR = rnd(0.70, 1.35) * depth;
-        const drift = rnd(6, 14) * (layer===0? 0.70 : layer===1? 0.90 : 1.0);
-        const fall  = rnd(7, 18) * (layer===0? 0.65 : layer===1? 0.85 : 1.0);
-        const freq  = rnd(2.8, 5.0);
-        const phase = rnd(0, Math.PI*2);
-        const sharp = rnd(3.6, 5.2);
-        const gate  = rnd(0.68, 0.90);
-        const warm  = clamp01(rnd(0.35, 0.85));
-        const tilt  = rnd(-0.55, 0.55);
-        arr.push({
-          x0: rnd(0.04*w, 0.96*w),
-          y0: rnd(0.04*h, 0.96*h),
-          r0: baseR,
-          drift,
-          fall,
-          freq,
-          phase,
-          sharp,
-          gate,
-          warm,
-          tilt,
-          speed: rnd(0.85, 1.12) * (layer===0? 0.85 : layer===1? 1.0 : 1.08),
-          layer
+      // intensity: 1/3 (fewer particles)
+      const COUNT = Math.max(18, Math.floor((W * H) / 22000)); // <- reduced
+      const parts = [];
+      for (let i = 0; i < COUNT; i++) {
+        parts.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          r: 0.6 + Math.random() * 1.4,
+          a: 0.05 + Math.random() * 0.18,
+          tw: 0.008 + Math.random() * 0.018,
+          vx: -0.02 + Math.random() * 0.04,
+          vy: 0.10 + Math.random() * 0.22,
+          p: Math.random() * Math.PI * 2,
         });
       }
-      return arr;
+
+      let running = false;
+      let t0 = 0;
+      function tick(ts) {
+        if (!running) return;
+        if (!t0) t0 = ts;
+        const dt = Math.min(32, ts - t0);
+        t0 = ts;
+
+        ctx.clearRect(0, 0, W, H);
+
+        for (const p of parts) {
+          p.p += p.tw * dt;
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+
+          // loop
+          if (p.y > H + 10) { p.y = -10; p.x = Math.random() * W; }
+          if (p.x < -10) p.x = W + 10;
+          if (p.x > W + 10) p.x = -10;
+
+          const tw = 0.4 + 0.6 * Math.abs(Math.sin(p.p));
+          const alpha = p.a * tw;
+
+          // brand-ish: white + faint champagne glint (kept subtle)
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.fillStyle = `rgba(255,245,210,${alpha * 0.35})`;
+          ctx.arc(p.x + 0.6, p.y - 0.4, Math.max(0.3, p.r * 0.55), 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        requestAnimationFrame(tick);
+      }
+
+      return {
+        start() { if (!running) { running = true; t0 = 0; requestAnimationFrame(tick); } },
+        stop() { running = false; ctx.clearRect(0, 0, W, H); },
+        resize,
+      };
     }
 
-    const flakes = [
-      ...makeLayer(countFar, 0),
-      ...makeLayer(countMid, 1),
-      ...makeLayer(countNear, 2),
-    ];
+    const sparkleEngines = new Map();
+    function ensureSparkle(postId) {
+      const canvas = document.getElementById(`sparkle-${postId}`);
+      if (!canvas) return null;
+      if (!sparkleEngines.has(postId)) {
+        sparkleEngines.set(postId, makeSparkle(canvas));
+      }
+      return sparkleEngines.get(postId);
+    }
 
-    const cx = w*0.50, cy = h*0.48;
-    const burst = new Array(burstCount).fill(0).map(() => {
-      const ang = rnd(0, Math.PI*2);
-      const sp = rnd(0.7, 1.3);
-      return {
-        vx: Math.cos(ang)*sp,
-        vy: Math.sin(ang)*sp,
-        r: rnd(0.95, 1.65),
-        warm: clamp01(rnd(0.55, 0.95)),
-        life: rnd(420, 620),
-        born: 0,
-        tilt: rnd(-0.5, 0.5)
-      };
+    // Start sparkle for already-voted cards
+    document.querySelectorAll(".post").forEach((el) => {
+      const postId = el.dataset.postId;
+      if (el.classList.contains("sparkle-active")) {
+        const engine = ensureSparkle(postId);
+        if (engine) engine.start();
+      }
     });
 
-    function frame(now){
-      const elapsed = now - start;
-      const t = elapsed / 1000;
-      const alive = elapsed < duration;
+    window.addEventListener("resize", () => {
+      sparkleEngines.forEach((engine) => engine.resize());
+    });
 
-      ctx.globalCompositeOperation = "source-over";
-      ctx.fillStyle = "rgba(0,0,0,0.14)";
-      ctx.fillRect(0,0,w,h);
+    // ---------- vote/unvote ----------
+    async function postJSON(url) {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": CSRF,
+          "X-Requested-With": "XMLHttpRequest",
+          "Accept": "application/json",
+        },
+      });
+      const data = await res.json().catch(() => ({}));
+      return { res, data };
+    }
 
-      const tail = clamp01((duration - elapsed) / 360);
+    function setCardState(postId, voted) {
+      const postEl = document.getElementById(`post-${postId}`);
+      const btn = postEl.querySelector(".vote-btn");
+      const engine = ensureSparkle(postId);
 
-      for (const f of flakes){
-        const driftAmp = f.drift * (f.layer===0? 0.85 : f.layer===1? 1.0 : 1.05);
-        const fallAmp  = f.fall  * (f.layer===0? 0.70 : f.layer===1? 0.90 : 1.0);
-
-        const x = f.x0 + Math.sin(t*0.92 + f.phase) * driftAmp;
-        let y = f.y0 + (t * (fallAmp * 0.12 * f.speed)) + Math.sin(t*0.70 + f.phase*0.7) * (fallAmp * 0.14);
-
-        if (y > h + 10){
-          y = -10;
-          f.y0 = rnd(-h*0.10, h*0.10);
-          f.x0 = rnd(0.04*w, 0.96*w);
-        }
-
-        const base = 0.5 + 0.5 * Math.sin((Math.PI*2) * f.freq * t + f.phase);
-        const pulse = Math.pow(base, f.sharp);
-        const gated = (pulse > f.gate) ? pulse : (pulse * 0.05);
-
-        const a = Math.min(1, gated * 0.78) * tail;
-
-        if (a > 0.02){
-          const rr = f.r0 * (1.0 + a*0.40);
-          const tilt = f.tilt + Math.sin(t*0.35 + f.phase)*0.06;
-          drawLuxeBokeh(ctx, x, y, rr, a, f.warm, tilt);
-        }
-      }
-
-      for (const b of burst){
-        if (b.born === 0) b.born = elapsed;
-        const age = elapsed - b.born;
-        if (age < 0 || age > b.life) continue;
-
-        const p = age / b.life;
-        const bx = cx + b.vx * age * 0.45;
-        const by = cy + b.vy * age * 0.45;
-
-        const a = (1 - p) * 0.32 * tail;
-        const rr = b.r * (1.0 + p * 0.30);
-
-        if (a > 0.02){
-          drawLuxeBokeh(ctx, bx, by, rr, a, b.warm, b.tilt);
-        }
-      }
-
-      if (alive){
-        requestAnimationFrame(frame);
+      if (voted) {
+        postEl.classList.add("sparkle-active");
+        postEl.classList.remove("dimmed");
+        btn.classList.add("primary");
+        btn.dataset.action = "unvote";
+        btn.textContent = "{{ t('remove_vote') }}";
+        if (engine) engine.start();
       } else {
-        try { canvas.remove(); } catch(e) {}
+        postEl.classList.remove("sparkle-active");
+        postEl.classList.add("dimmed");
+        btn.classList.remove("primary");
+        btn.dataset.action = "vote";
+        btn.textContent = "{{ t('vote') }}";
+        if (engine) engine.stop();
       }
     }
 
-    ctx.fillStyle = "rgba(0,0,0,0.18)";
-    ctx.fillRect(0,0,w,h);
+    document.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".vote-btn");
+      if (!btn) return;
 
-    requestAnimationFrame(frame);
-  }
+      const postId = btn.dataset.postId;
+      const action = btn.dataset.action;
 
-  // Vote (AJAX)
-  const voteForms = document.querySelectorAll(".vote-form");
-
-  voteForms.forEach((form) => {
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-
-      const btn = form.querySelector("button");
-      if (btn) btn.classList.add("btn-loading");
-
-      const postEl = form.closest(".post");
-      const postId = postEl ? postEl.getAttribute("data-post-id") : null;
-      const votesEl = document.getElementById(`votes-${postId}`);
-
-      const voteUrl = form.dataset.voteUrl;
-      const unvoteUrl = form.dataset.unvoteUrl;
-
-      const isUnvote = form.action.includes("/unvote/");
-      const url = isUnvote ? unvoteUrl : voteUrl;
-
-      const csrf = form.querySelector('input[name="csrf_token"]').value;
+      btn.disabled = true;
 
       try {
-        const fd = new FormData();
-        fd.append("csrf_token", csrf);
+        const url = action === "vote" ? `/vote/${postId}` : `/unvote/${postId}`;
+        const { res, data } = await postJSON(url);
 
-        const res = await fetch(url, {
-          method: "POST",
-          body: fd,
-          credentials: "same-origin",
-          headers: { "X-Requested-With": "XMLHttpRequest" },
-        });
-
-        let data = null;
-        try { data = await res.json(); } catch(e) {}
-
-        if (res.status === 401 && data && data.redirect){
-          if (btn) btn.classList.remove("btn-loading");
-          showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:data.redirect });
+        if (res.status === 401 && data && data.redirect) {
+          showToast("{{ t('login_required') }}", "{{ t('login_to_continue') }}");
+          setTimeout(() => { window.location.href = data.redirect; }, 700);
+          return;
+        }
+        if (!res.ok || !data.ok) {
+          showToast("{{ t('error') }}", "{{ t('try_again') }}");
           return;
         }
 
-        if (!res.ok){
-          if (data && data.redirect){
-            if (btn) btn.classList.remove("btn-loading");
-            showToast("LOGIN REQUIRED", "Login to continue.", { label:"LOGIN", href:data.redirect });
-            return;
-          }
-          throw new Error("Request failed");
-        }
+        // update count
+        const vEl = document.getElementById(`votes-${postId}`);
+        if (vEl && typeof data.votes !== "undefined") vEl.textContent = data.votes;
 
-        if (votesEl){
-          votesEl.textContent = data.votes + " VOTES";
-          popCount(votesEl);
-        }
+        setCardState(postId, data.voted);
 
-        const wrap = postEl ? postEl.querySelector(".post-img-wrap") : null;
-        if (wrap) {
-          const img = wrap.querySelector(".look-img");
-          if (img) img.setAttribute("data-votes", String(data.votes));
-        }
-
-        const card = document.getElementById(`card-${data.post_id}`);
-        const voted = !!data.voted;
-
-        form.action = voted ? form.dataset.unvoteUrl : form.dataset.voteUrl;
-
-        if (btn) {
-          btn.classList.remove("btn-loading");
-          if (voted) {
-            btn.textContent = "REMOVE VOTE";
-            btn.classList.remove("btn-vote");
-            btn.classList.add("btn-unvote");
-
-            addOnce(card, "vote-flash", 580);
-            addOnce(card, "vote-stars", 650);
-            addRibbon(card);
-            runSparkle(card);
-            showToast("VOTED", "Your vote is counted.");
-          } else {
-            btn.textContent = "VOTE";
-            btn.classList.remove("btn-unvote");
-            btn.classList.add("btn-vote");
-
-            addOnce(card, "unvote-purple", 1550);
-            addStamp(card);
-            showToast("UNVOTED", "Vote removed.");
-          }
+        if (data.voted) {
+          showToast("{{ t('voted') }}", "{{ t('your_vote_counted') }}");
+        } else {
+          showToast("{{ t('unvoted') }}", "{{ t('vote_removed') }}");
         }
       } catch (err) {
-        if (btn) btn.classList.remove("btn-loading");
-        showToast("ERROR", "Please try again.");
+        showToast("{{ t('error') }}", "{{ t('try_again') }}");
+      } finally {
+        btn.disabled = false;
       }
     });
-  });
-
-  // (ログイン必須ボタンは上で設定済み)
-});
-</script>
-
-<script>
-/* Separate small script to attach guest vote toast (kept tiny & safe) */
-document.addEventListener("DOMContentLoaded", function () {
-  const toast = document.getElementById("toast");
-  const toastMain = document.getElementById("toastMain");
-  const toastSub = document.getElementById("toastSub");
-  const toastAction = document.getElementById("toastAction");
-  let toastTimer = null;
-
-  function showToast(main, sub, action){
-    toastMain.textContent = main;
-    toastSub.textContent = sub;
-
-    if (action && action.label && action.href){
-      toast.classList.add("has-action");
-      toastAction.textContent = action.label;
-      toastAction.setAttribute("href", action.href);
-      toastAction.style.display = "inline-flex";
-    } else {
-      toast.classList.remove("has-action");
-      toastAction.textContent = "ACTION";
-      toastAction.setAttribute("href", "#");
-      toastAction.style.display = "none";
-    }
-
-    toast.classList.add("show");
-    if (toastTimer) clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
-  }
-
-  document.querySelectorAll(".js-login-required").forEach((btn)=>{
-    btn.addEventListener("click", ()=>{
-      const url = btn.getAttribute("data-login-url") || "/login";
-      showToast("LOGIN REQUIRED", "Login to vote.", { label:"LOGIN", href:url });
-    });
-  });
-});
-</script>
-
+  </script>
 </body>
 </html>

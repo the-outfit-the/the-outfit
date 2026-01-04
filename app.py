@@ -7,24 +7,16 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    session,
-    send_from_directory,
-    g,
-    jsonify,
-    abort,
+    Flask, render_template, request, redirect,
+    url_for, session, send_from_directory,
+    g, jsonify, abort
 )
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 
-
 # ---------------------------
 # 保存先（Render対策）
-#   - 永続Diskがあれば DATA_DIR を指定（例: /var/data）
+#   - 永続Diskがあれば DATA_DIR が入る
 #   - 無ければ /tmp（揮発だが動作はする）
 # ---------------------------
 
@@ -40,11 +32,168 @@ APP_ENV = os.environ.get("APP_ENV", "dev").lower()
 DEBUG = APP_ENV != "prod"
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", secrets.token_hex(32))
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_DIR)
 app.config["MAX_CONTENT_LENGTH"] = 10 * 1024 * 1024  # 10MB
 
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
+SUPPORTED_LANGS = ("ja", "en")
+
+TRANSLATIONS = {
+    "ja": {
+        # common
+        "site_name": "The Outfit",
+        "lookbook": "ルックブック",
+        "ranking": "ランキング",
+        "ranked_looks": "ランキング",
+        "curated_by_votes": "投票で決まる · リアルタイム",
+        "guest": "ゲスト",
+
+        "upload": "投稿",
+        "login": "ログイン",
+        "logout": "ログアウト",
+        "register": "新規登録",
+
+        "vote": "投票",
+        "remove_vote": "投票取消",
+        "login_required": "ログインが必要です",
+        "login_to_vote": "投票するにはログインしてください。",
+        "login_to_continue": "続行するにはログインしてください。",
+
+        "voted": "投票しました",
+        "unvoted": "取り消しました",
+        "your_vote_counted": "投票を受け付けました。",
+        "vote_removed": "投票を取り消しました。",
+        "error": "エラー",
+        "try_again": "もう一度お試しください。",
+
+        "close_hint": "クリックで閉じる",
+        "no_looks": "まだ投稿がありません。最初の1枚を投稿してみよう。",
+
+        # intro
+        "intro_kicker": "エディトリアル · コミュニティランキング",
+        "intro_title": "投稿して、投票して、ランクイン。",
+        "intro_desc_1": "は、世界中のファッション写真が集まる",
+        "intro_desc_2": "投票型ルックブック",
+        "intro_desc_3": "です。見るだけならログイン不要。投票・投稿はログイン後にできます。",
+        "how_it_works": "このサイトについて",
+        "can_do": "できること：",
+        "can_view": "ランキング閲覧：誰でもOK（ログイン不要）",
+        "can_vote": "投票：ログイン必須（1人1票・取消可）",
+        "can_post": "投稿：ログイン必須（あなたの“今日の一枚”を世界へ）",
+        "step_1": "投稿",
+        "step_2": "投票",
+        "step_3": "ランク",
+        "view_ranking": "ランキングを見る",
+    },
+    "en": {
+        # common
+        "site_name": "The Outfit",
+        "lookbook": "LOOKBOOK",
+        "ranking": "RANKING",
+        "ranked_looks": "RANKED LOOKS",
+        "curated_by_votes": "CURATED BY VOTES · LIVE FEED",
+        "guest": "GUEST",
+
+        "upload": "UPLOAD",
+        "login": "LOGIN",
+        "logout": "LOGOUT",
+        "register": "REGISTER",
+
+        "vote": "VOTE",
+        "remove_vote": "REMOVE VOTE",
+        "login_required": "LOGIN REQUIRED",
+        "login_to_vote": "Login to vote.",
+        "login_to_continue": "Login to continue.",
+
+        "voted": "VOTED",
+        "unvoted": "UNVOTED",
+        "your_vote_counted": "Your vote is counted.",
+        "vote_removed": "Vote removed.",
+        "error": "ERROR",
+        "try_again": "Please try again.",
+
+        "close_hint": "CLICK ANYWHERE TO CLOSE",
+        "no_looks": "No looks yet. Be the first to curate your page.",
+
+        # intro
+        "intro_kicker": "EDITORIAL · COMMUNITY RANKING",
+        "intro_title": "POST OUTFITS. VOTE. RANK.",
+        "intro_desc_1": "is a vote-based lookbook where fashion photos from around the world compete.",
+        "intro_desc_2": "",
+        "intro_desc_3": "Browse without login. Vote & post after login.",
+        "how_it_works": "WHAT IS THIS SITE?",
+        "can_do": "What you can do:",
+        "can_view": "View ranking: anyone (no login)",
+        "can_vote": "Vote: login required (1 per person, removable)",
+        "can_post": "Post: login required (share your look)",
+        "step_1": "UPLOAD",
+        "step_2": "VOTE",
+        "step_3": "TOP RANK",
+        "view_ranking": "VIEW RANKING",
+    },
+}
+
+
+# ---------------------------
+# i18n helpers
+# ---------------------------
+
+def get_lang() -> str:
+    lang = session.get("lang")
+    if lang in SUPPORTED_LANGS:
+        return lang
+    return "ja"
+
+
+def t(key: str, **kwargs) -> str:
+    lang = get_lang()
+    table = TRANSLATIONS.get(lang, TRANSLATIONS["ja"])
+    text = table.get(key, key)
+    if kwargs:
+        try:
+            text = text.format(**kwargs)
+        except Exception:
+            pass
+    return text
+
+
+def _safe_next_url(next_url: str) -> str:
+    """
+    Open redirect対策：相対パスのみ許可
+    """
+    if not next_url:
+        return url_for("index")
+    try:
+        parsed = urlparse(next_url)
+        # 外部URL（scheme/hostあり）は拒否
+        if parsed.scheme or parsed.netloc:
+            return url_for("index")
+        if not next_url.startswith("/"):
+            return url_for("index")
+        return next_url
+    except Exception:
+        return url_for("index")
+
+
+@app.context_processor
+def inject_i18n():
+    def set_lang_url(code: str) -> str:
+        # 今見てるページへ戻す（?lang=...等も含む）
+        return url_for("set_lang", code=code, next=request.full_path)
+    return {
+        "t": t,
+        "lang_code": get_lang(),
+        "set_lang_url": set_lang_url,
+    }
+
+
+@app.route("/lang/<code>")
+def set_lang(code):
+    if code in SUPPORTED_LANGS:
+        session["lang"] = code
+    next_url = request.args.get("next") or request.referrer or url_for("index")
+    return redirect(_safe_next_url(next_url))
 
 
 # ---------------------------
@@ -53,15 +202,9 @@ ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "webp"}
 
 def get_db():
     if "db" not in g:
-        conn = sqlite3.connect(DB_PATH, timeout=10, check_same_thread=False)
+        # Gunicorn/Render環境での安定化
+        conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
         conn.row_factory = sqlite3.Row
-        # 安定化（環境によっては効かないが害は少ない）
-        try:
-            conn.execute("PRAGMA foreign_keys=ON;")
-            conn.execute("PRAGMA journal_mode=WAL;")
-            conn.execute("PRAGMA synchronous=NORMAL;")
-        except sqlite3.Error:
-            pass
         g.db = conn
     return g.db
 
@@ -71,6 +214,16 @@ def close_db(exc):
     db = g.pop("db", None)
     if db is not None:
         db.close()
+
+
+def _migrate_posts_add_title(db):
+    """
+    既存DBに title カラムが無い場合だけ追加（SQLiteの安全な簡易マイグレーション）
+    """
+    cols = [r["name"] for r in db.execute("PRAGMA table_info(posts)").fetchall()]
+    if "title" not in cols:
+        db.execute("ALTER TABLE posts ADD COLUMN title TEXT")
+        db.commit()
 
 
 def init_db():
@@ -91,6 +244,7 @@ def init_db():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             filename TEXT NOT NULL,
             user TEXT NOT NULL,
+            title TEXT,
             created_at TEXT NOT NULL,
             votes INTEGER NOT NULL DEFAULT 0
         );
@@ -107,6 +261,18 @@ def init_db():
         """
     )
     db.commit()
+    _migrate_posts_add_title(db)
+
+
+def fetch_db_user(username):
+    if not username:
+        return None
+    db = get_db()
+    row = db.execute(
+        "SELECT username FROM users WHERE username = ?",
+        (username,),
+    ).fetchone()
+    return row["username"] if row else None
 
 
 # ---------------------------
@@ -127,7 +293,6 @@ def is_ajax():
 
 
 def validate_csrf():
-    # フォーム or ヘッダ どちらでもOKにする（AJAX耐性）
     form_token = request.form.get("csrf_token", "")
     header_token = (
         request.headers.get("X-CSRFToken")
@@ -145,43 +310,21 @@ def validate_csrf():
 app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
 
-@app.errorhandler(400)
-def bad_request(e):
-    # CSRF以外も400に来るので、descriptionを見る
-    desc = getattr(e, "description", "") or ""
-    if desc == "Invalid CSRF token" and is_ajax():
-        return (
-            jsonify(
-                {
-                    "ok": False,
-                    "reason": "csrf",
-                    "redirect": url_for("login", next=request.full_path),
-                }
-            ),
-            400,
-        )
-    return e
-
-
 # ---------------------------
-# ログイン状態の判定（DBにいないユーザーを完全に無効化）
+# 認証関連
 # ---------------------------
-
-def fetch_db_user(username):
-    if not username:
-        return None
-    db = get_db()
-    row = db.execute(
-        "SELECT username FROM users WHERE username = ?",
-        (username,),
-    ).fetchone()
-    return row["username"] if row else None
-
 
 @app.before_request
 def load_logged_in_user():
-    # ★重要：ここで必ず init_db()（テーブル未作成でも落ちない）
+    """
+    ★重要：ここで必ず init_db() してテーブル未作成でも落ちないようにする
+    """
     init_db()
+
+    # 言語：?lang=ja/en が付いていれば反映
+    qlang = request.args.get("lang")
+    if qlang in SUPPORTED_LANGS:
+        session["lang"] = qlang
 
     username = session.get("user")
     real_user = fetch_db_user(username)
@@ -207,41 +350,20 @@ def login_required_api(view):
     def wrapped(*args, **kwargs):
         if g.user is None:
             # ★APIは必ず「ログインへ誘導」情報も返す（JSで扱える）
-            return (
-                jsonify(
-                    {
-                        "ok": False,
-                        "reason": "auth",
-                        "redirect": url_for("login", next=request.full_path),
-                    }
-                ),
-                401,
-            )
+            return jsonify({
+                "ok": False,
+                "reason": "auth",
+                "redirect": url_for("login", next=request.path),
+            }), 401
         return view(*args, **kwargs)
     return wrapped
 
 
-# ---------------------------
-# ユーティリティ
-# ---------------------------
-
 def allowed_file(filename):
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
-
-def safe_next_url(next_url):
-    """
-    オープンリダイレクト対策：
-    - / から始まる相対パスだけ許可
-    """
-    if not next_url:
-        return None
-    p = urlparse(next_url)
-    if p.scheme or p.netloc:
-        return None
-    if not next_url.startswith("/"):
-        return None
-    return next_url
+    return (
+        "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+    )
 
 
 # ---------------------------
@@ -254,28 +376,50 @@ def index():
 
     posts = db.execute(
         """
-        SELECT id, filename, user, votes, created_at
+        SELECT id, filename, user, title, votes, created_at
         FROM posts
         ORDER BY votes DESC, created_at DESC
         """
     ).fetchall()
 
+    voted_ids = set()
     if g.user:
         rows = db.execute(
             "SELECT post_id FROM votes WHERE user = ?",
             (g.user,),
         ).fetchall()
-        voted_ids = {row["post_id"] for row in rows}
-    else:
-        voted_ids = set()
+        voted_ids = {r["post_id"] for r in rows}
 
     return render_template(
         "home.html",
         posts=posts,
-        is_logged_in=g.user is not None,
         user=g.user,
+        is_logged_in=bool(g.user),
         voted_ids=voted_ids,
     )
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        validate_csrf()
+        username = (request.form.get("username") or "").strip()
+        password = request.form.get("password") or ""
+        next_url = request.args.get("next") or url_for("index")
+
+        db = get_db()
+        row = db.execute(
+            "SELECT username, password_hash FROM users WHERE username = ?",
+            (username,),
+        ).fetchone()
+
+        if row is None or not check_password_hash(row["password_hash"], password):
+            return render_template("login.html", error=t("login_invalid"))
+
+        session["user"] = row["username"]
+        return redirect(_safe_next_url(next_url))
+
+    return render_template("login.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
@@ -287,16 +431,10 @@ def register():
         password2 = request.form.get("password2") or ""
 
         if not username or not password:
-            return render_template("register.html", error="ユーザー名とパスワードを入力してください。")
+            return render_template("register.html", error=t("reg_need_userpass"))
 
-        if password != password2:
-            return render_template("register.html", error="パスワード（確認）が一致しません。")
-
-        if len(username) > 40:
-            return render_template("register.html", error="ユーザー名が長すぎます。（40文字以内）")
-
-        if len(password) < 8:
-            return render_template("register.html", error="パスワードは8文字以上にしてください。")
+        if password2 and password2 != password:
+            return render_template("register.html", error=t("reg_pw_mismatch"))
 
         db = get_db()
         exists = db.execute(
@@ -304,7 +442,7 @@ def register():
             (username,),
         ).fetchone()
         if exists:
-            return render_template("register.html", error="このユーザー名は既に使われています。")
+            return render_template("register.html", error=t("reg_taken"))
 
         db.execute(
             "INSERT INTO users (username, password_hash, created_at) VALUES (?, ?, ?)",
@@ -315,30 +453,6 @@ def register():
         return redirect(url_for("index"))
 
     return render_template("register.html")
-
-
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    next_url = safe_next_url(request.args.get("next")) or url_for("index")
-
-    if request.method == "POST":
-        validate_csrf()
-        username = (request.form.get("username") or "").strip()
-        password = request.form.get("password") or ""
-
-        db = get_db()
-        row = db.execute(
-            "SELECT username, password_hash FROM users WHERE username = ?",
-            (username,),
-        ).fetchone()
-
-        if row is None or not check_password_hash(row["password_hash"], password):
-            return render_template("login.html", error="ユーザー名またはパスワードが違います。")
-
-        session["user"] = row["username"]
-        return redirect(next_url)
-
-    return render_template("login.html")
 
 
 @app.route("/logout", methods=["POST"])
@@ -353,16 +467,19 @@ def logout():
 def upload():
     if request.method == "POST":
         validate_csrf()
-
         if "photo" not in request.files:
-            return render_template("upload.html", error="ファイルが選択されていません。")
+            return render_template("upload.html", error=t("up_no_file"))
 
         file = request.files["photo"]
         if file.filename == "":
-            return render_template("upload.html", error="ファイル名が空です。")
+            return render_template("upload.html", error=t("up_empty_name"))
 
         if not allowed_file(file.filename):
-            return render_template("upload.html", error="対応していないファイル形式です。（png/jpg/jpeg/webp）")
+            return render_template("upload.html", error=t("up_bad_type"))
+
+        title = (request.form.get("title") or "").strip()
+        if len(title) > 80:
+            title = title[:80]
 
         filename = secure_filename(file.filename)
         random_prefix = secrets.token_hex(8)
@@ -372,8 +489,8 @@ def upload():
 
         db = get_db()
         db.execute(
-            "INSERT INTO posts (filename, user, created_at, votes) VALUES (?, ?, ?, 0)",
-            (final_name, g.user, datetime.utcnow().isoformat()),
+            "INSERT INTO posts (filename, user, title, created_at, votes) VALUES (?, ?, ?, ?, 0)",
+            (final_name, g.user, title or None, datetime.utcnow().isoformat()),
         )
         db.commit()
         return redirect(url_for("index"))
@@ -396,15 +513,12 @@ def vote(post_id):
     validate_csrf()
     db = get_db()
 
-    post = db.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
-    if post is None:
-        return jsonify({"ok": False, "reason": "not_found"}), 404
-
-    already = db.execute(
+    exists = db.execute(
         "SELECT 1 FROM votes WHERE user = ? AND post_id = ?",
         (g.user, post_id),
     ).fetchone()
-    if already:
+
+    if exists:
         cur_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
         return jsonify({"ok": True, "post_id": post_id, "votes": cur_votes, "voted": True})
 
@@ -425,14 +539,11 @@ def unvote(post_id):
     validate_csrf()
     db = get_db()
 
-    post = db.execute("SELECT id FROM posts WHERE id = ?", (post_id,)).fetchone()
-    if post is None:
-        return jsonify({"ok": False, "reason": "not_found"}), 404
-
     exists = db.execute(
         "SELECT 1 FROM votes WHERE user = ? AND post_id = ?",
         (g.user, post_id),
     ).fetchone()
+
     if not exists:
         cur_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
         return jsonify({"ok": True, "post_id": post_id, "votes": cur_votes, "voted": False})
@@ -443,6 +554,30 @@ def unvote(post_id):
 
     new_votes = db.execute("SELECT votes FROM posts WHERE id = ?", (post_id,)).fetchone()["votes"]
     return jsonify({"ok": True, "post_id": post_id, "votes": new_votes, "voted": False})
+
+
+# ---------------------------
+# i18n error strings
+# ---------------------------
+
+TRANSLATIONS["ja"].update({
+    "login_invalid": "ユーザー名またはパスワードが違います。",
+    "reg_need_userpass": "ユーザー名とパスワードを入力してください。",
+    "reg_pw_mismatch": "パスワード（確認）が一致しません。",
+    "reg_taken": "このユーザー名は既に使われています。",
+    "up_no_file": "ファイルが選択されていません。",
+    "up_empty_name": "ファイル名が空です。",
+    "up_bad_type": "対応していないファイル形式です。（png/jpg/jpeg/webp）",
+})
+TRANSLATIONS["en"].update({
+    "login_invalid": "Invalid username or password.",
+    "reg_need_userpass": "Please enter a username and password.",
+    "reg_pw_mismatch": "Passwords do not match.",
+    "reg_taken": "That username is already taken.",
+    "up_no_file": "No file selected.",
+    "up_empty_name": "Filename is empty.",
+    "up_bad_type": "Unsupported file type. (png/jpg/jpeg/webp)",
+})
 
 
 if __name__ == "__main__":
